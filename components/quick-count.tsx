@@ -57,10 +57,15 @@ export function QuickCount({
   const inputRef = useRef<HTMLInputElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  // Sync from parent when search is cleared (e.g. after selecting an item)
+  // Sync from parent: clear when search cleared; when search set and input empty (e.g. barcode), show it
   useEffect(() => {
-    if (search === "") setLocalSearch("")
+    if (search === "") {
+      setLocalSearch("")
+      if (searchRef.current) searchRef.current.value = ""
+    } else if (searchRef.current && searchRef.current.value === "") {
+      searchRef.current.value = search
+      setLocalSearch(search)
+    }
   }, [search])
 
   const debouncedOnSearchChange = useMemo(() => {
@@ -69,7 +74,7 @@ export function QuickCount({
       debounceRef.current = setTimeout(() => {
         debounceRef.current = null
         onSearchChange(value)
-      }, 280)
+      }, 320)
     }
   }, [onSearchChange])
 
@@ -78,6 +83,15 @@ export function QuickCount({
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
   }, [])
+
+  const handleSearchInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const v = e.target.value
+      setLocalSearch(v)
+      debouncedOnSearchChange(v)
+    },
+    [debouncedOnSearchChange]
+  )
 
   const handleSelectItem = useCallback(
     (item: StockItem, preserveBarcode?: boolean) => {
@@ -182,8 +196,8 @@ export function QuickCount({
         </div>
       )}
 
-      {/* Search / Scanner input */}
-      <div className="border-b px-4 py-3">
+      {/* Search / Scanner input - results in absolute overlay to avoid layout shift (keeps mobile keyboard open) */}
+      <div className="border-b px-4 py-3 relative">
         {showScanner && (
           <BarcodeScanner
             active={showScanner}
@@ -207,19 +221,16 @@ export function QuickCount({
             type="search"
             inputMode="search"
             autoComplete="off"
+            defaultValue=""
             placeholder={
               showScanner
                 ? "Scan barcode or enter SKU..."
                 : "Search by SKU or product name..."
             }
-            value={localSearch}
-            onChange={(e) => {
-              const v = e.target.value
-              setLocalSearch(v)
-              debouncedOnSearchChange(v)
-            }}
+            onChange={handleSearchInputChange}
             className="min-h-[44px] bg-secondary/50 pl-9 pr-9 text-base md:text-sm touch-manipulation"
             aria-label="Search by SKU or product name"
+            data-1p-ignore
           />
           {localSearch && (
             <button
@@ -227,7 +238,10 @@ export function QuickCount({
               onClick={() => {
                 setLocalSearch("")
                 onSearchChange("")
-                searchRef.current?.focus()
+                if (searchRef.current) {
+                  searchRef.current.value = ""
+                  searchRef.current.focus()
+                }
               }}
               className="absolute right-3 top-1/2 -translate-y-1/2 min-h-[44px] min-w-[44px] flex items-center justify-center -mr-1 text-muted-foreground hover:text-foreground touch-manipulation"
               aria-label="Clear search"
@@ -237,15 +251,16 @@ export function QuickCount({
           )}
         </div>
 
-        {/* Search results dropdown */}
-        {search && items.length > 0 && !isLoading && (
-          <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border bg-popover scrollbar-thin">
+        {/* Results in absolute overlay - no layout shift so keyboard stays open on mobile */}
+        <div className="absolute left-4 right-4 top-full z-50 mt-1">
+          {search && items.length > 0 && !isLoading && (
+          <div className="max-h-48 overflow-y-auto rounded-lg border bg-popover shadow-lg scrollbar-thin">
             {items.slice(0, 8).map((item) => (
               <button
                 type="button"
                 key={item.id}
                 onClick={() => handleSelectItem(item)}
-                className="flex w-full items-center justify-between px-3 py-2.5 text-left transition-colors hover:bg-secondary/70"
+                className="flex w-full items-center justify-between px-3 py-2.5 text-left transition-colors hover:bg-secondary/70 active:bg-secondary/70"
               >
                 <div className="flex flex-col gap-0.5">
                   <span className="text-sm font-medium text-foreground">
@@ -275,15 +290,16 @@ export function QuickCount({
               </button>
             ))}
           </div>
-        )}
-        {search && search.length >= 2 && !isLoading && items.length === 0 && (
-          <div className="mt-2 rounded-lg border bg-popover px-3 py-4 text-center text-sm text-muted-foreground">
-            No items found matching &quot;{search}&quot;
-          </div>
-        )}
-        {localSearch.length > 0 && localSearch.length < 2 && (
-          <p className="mt-2 text-xs text-muted-foreground">Type 2+ characters to search</p>
-        )}
+          )}
+          {search && search.length >= 2 && !isLoading && items.length === 0 && (
+            <div className="rounded-lg border bg-popover px-3 py-4 text-center text-sm text-muted-foreground shadow-lg">
+              No items found matching &quot;{search}&quot;
+            </div>
+          )}
+          {localSearch.length > 0 && localSearch.length < 2 && (
+            <p className="px-1 pt-1 text-xs text-muted-foreground">Type 2+ characters to search</p>
+          )}
+        </div>
       </div>
 
       {/* Selected item counting */}
