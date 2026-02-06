@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model StockItem {
+  id             String    @id @default(cuid())
+  odooId         Int       @unique
+  sku            String
+  name           String
+  category       String?
+  location       String
+  warehouse      String?
+  expectedQty    Int
+  reservedQty    Int?
+  availableQty   Int?
+  countedQty     Int?
+  variance       Int?
+  status         String    @default("pending") // pending | counted | variance | verified
+  lastCountedBy  String?
+  lastCountedAt  DateTime?
+  barcode        String?
+  uom            String?
+  serialNumber   String?
+  owner          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([location])
+  @@index([status])
+}
+
+model StockSession {
+  id             String   @id @default(cuid())
+  organizationId String?  // Clerk org id – sessions scoped to team
+  name           String
+  status         String   @default("live") // live | paused | completed
+  startedAt      DateTime @default(now())
+  location       String?
+  totalItems     Int      @default(0)
+  countedItems   Int      @default(0)
+  varianceItems  Int      @default(0)
+  verifiedItems  Int      @default(0)
+  teamMembers    Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+model StockActivity {
+  id             String   @id @default(cuid())
+  organizationId String?
+  sessionId      String?
+  type           String   // count | variance | verify | join | zone_complete
+  message        String
+  userId         String?  // Clerk user id
+  userName       String?
+  zone           String?
+  itemId         String?  // StockItem id when type is count/variance/verify
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([sessionId])
+  @@index([createdAt(sort: Desc)])
+}

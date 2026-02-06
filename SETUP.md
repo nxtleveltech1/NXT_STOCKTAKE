@@ -1,0 +1,31 @@
+# NXT_STOCKTAKE Setup
+
+## 1. Clerk (required for build)
+
+1. Create app at [dashboard.clerk.com](https://dashboard.clerk.com)
+2. Copy API keys to `.env.local`:
+   ```
+   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+   CLERK_SECRET_KEY=sk_test_...
+   ```
+
+## 2. Neon
+
+`DATABASE_URL` is pre-configured in `.env.local` for project **NXT_STOCKTAKE** (dry-snow-96214771).
+
+## 3. Seed from Excel
+
+```bash
+bun run seed
+```
+
+Seeds 12,000 stock items from `odoo_soh_full_20260206_124339.xlsx`. Re-run to truncate and re-seed.
+
+## 4. Run
+
+```bash
+bun install
+bun run dev
+```
+
+Routes: `/sign-in`, `/sign-up`. Protected routes require auth.
