@@ -113,7 +113,7 @@ export function StockTable({
       debounceRef.current = null
       onSearchChange(value)
       onPageChange(1)
-    }, 280)
+    }, 850)
   }
 
   const sorted = useMemo(() => {

@@ -74,7 +74,7 @@ export function QuickCount({
       debounceRef.current = setTimeout(() => {
         debounceRef.current = null
         onSearchChange(value)
-      }, 320)
+      }, 850)
     }
   }, [onSearchChange])
 
