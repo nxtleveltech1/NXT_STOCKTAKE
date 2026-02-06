@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useCallback, useEffect } from "react"
+import { useState, useRef, useCallback, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -53,8 +53,31 @@ export function QuickCount({
   const [showScanner, setShowScanner] = useState(false)
   const [scanToCountActive, setScanToCountActive] = useState(false)
   const [capturedBarcode, setCapturedBarcode] = useState<string | null>(null)
+  const [localSearch, setLocalSearch] = useState(search)
   const inputRef = useRef<HTMLInputElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Sync from parent when search is cleared (e.g. after selecting an item)
+  useEffect(() => {
+    if (search === "") setLocalSearch("")
+  }, [search])
+
+  const debouncedOnSearchChange = useMemo(() => {
+    return (value: string) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      debounceRef.current = setTimeout(() => {
+        debounceRef.current = null
+        onSearchChange(value)
+      }, 280)
+    }
+  }, [onSearchChange])
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [])
 
   const handleSelectItem = useCallback(
     (item: StockItem, preserveBarcode?: boolean) => {
@@ -178,25 +201,38 @@ export function QuickCount({
           />
         )}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 shrink-0 text-muted-foreground pointer-events-none" />
           <Input
             ref={searchRef}
+            type="search"
+            inputMode="search"
+            autoComplete="off"
             placeholder={
               showScanner
                 ? "Scan barcode or enter SKU..."
                 : "Search by SKU or product name..."
             }
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="h-10 bg-secondary/50 pl-9 pr-8 text-sm"
+            value={localSearch}
+            onChange={(e) => {
+              const v = e.target.value
+              setLocalSearch(v)
+              debouncedOnSearchChange(v)
+            }}
+            className="min-h-[44px] bg-secondary/50 pl-9 pr-9 text-base md:text-sm touch-manipulation"
+            aria-label="Search by SKU or product name"
           />
-          {search && (
+          {localSearch && (
             <button
               type="button"
-              onClick={() => onSearchChange("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                setLocalSearch("")
+                onSearchChange("")
+                searchRef.current?.focus()
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 min-h-[44px] min-w-[44px] flex items-center justify-center -mr-1 text-muted-foreground hover:text-foreground touch-manipulation"
+              aria-label="Clear search"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-4 w-4" />
             </button>
           )}
         </div>
@@ -245,7 +281,7 @@ export function QuickCount({
             No items found matching &quot;{search}&quot;
           </div>
         )}
-        {search && search.length < 2 && (
+        {localSearch.length > 0 && localSearch.length < 2 && (
           <p className="mt-2 text-xs text-muted-foreground">Type 2+ characters to search</p>
         )}
       </div>
@@ -297,10 +333,12 @@ export function QuickCount({
             <Input
               ref={inputRef}
               type="number"
+              inputMode="numeric"
               value={countValue}
               onChange={(e) => setCountValue(e.target.value)}
-              className="h-12 bg-secondary/50 text-center font-mono text-xl font-semibold"
+              className="min-h-[48px] bg-secondary/50 text-center font-mono text-xl font-semibold touch-manipulation"
               min={0}
+              aria-label="Count quantity"
             />
             <Button
               variant="outline"

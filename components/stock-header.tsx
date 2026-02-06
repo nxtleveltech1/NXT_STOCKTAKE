@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { OrganizationSwitcher, UserButton } from "@clerk/nextjs"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -12,7 +13,12 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
-import type { StockSession } from "@/lib/stock-store"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import type { StockSession, TeamMember } from "@/lib/stock-store"
 import {
   BarChart3,
   ChevronDown,
@@ -62,12 +68,77 @@ function ElapsedTime({ startedAt }: { startedAt: string }) {
   )
 }
 
+const statusDot = {
+  active: "bg-primary",
+  idle: "bg-amber-500",
+  offline: "bg-muted-foreground/40",
+}
+
+function OnlinePopover({
+  count,
+  members,
+}: {
+  count: number
+  members: TeamMember[]
+}) {
+  const online = members.filter((m) => m.status === "active" || m.status === "idle")
+  const displayCount = online.length > 0 ? online.length : count
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="flex cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          aria-label="Who's online"
+        >
+          <Users className="h-4 w-4 shrink-0" />
+          <span>{displayCount} online</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="center" className="w-64 p-0">
+        <div className="border-b px-3 py-2">
+          <p className="text-xs font-medium text-muted-foreground">Who&apos;s online</p>
+        </div>
+        <ul className="max-h-56 overflow-y-auto py-1">
+          {online.length === 0 ? (
+            <li className="px-3 py-4 text-center text-sm text-muted-foreground">
+              No one online right now
+            </li>
+          ) : (
+            online.map((m) => (
+              <li
+                key={m.id}
+                className="flex items-center gap-2 px-3 py-2 text-sm"
+              >
+                <div className="relative shrink-0">
+                  <Avatar className="h-7 w-7 bg-secondary text-xs">
+                    <AvatarFallback className="bg-secondary text-xs text-secondary-foreground">
+                      {m.avatar}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span
+                    className={`absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-background ${statusDot[m.status]}`}
+                  />
+                </div>
+                <span className="truncate font-medium text-foreground">{m.name}</span>
+              </li>
+            ))
+          )}
+        </ul>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 export function StockHeader({
   session,
   onToggleSession,
+  onlineMembers = [],
 }: {
   session: StockSession
   onToggleSession: () => void
+  onlineMembers?: TeamMember[]
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
@@ -105,12 +176,7 @@ export function StockHeader({
           <Clock className="h-4 w-4 text-muted-foreground" />
           <ElapsedTime startedAt={session.startedAt} />
           <div className="h-4 w-px bg-border" />
-          <div className="flex items-center gap-1.5">
-            <Users className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">
-              {session.teamMembers} online
-            </span>
-          </div>
+          <OnlinePopover count={session.teamMembers} members={onlineMembers} />
           <div className="h-4 w-px bg-border" />
           <div className="flex items-center gap-1.5">
             <Wifi className="h-3.5 w-3.5 text-primary" />
@@ -235,10 +301,7 @@ export function StockHeader({
               <span className="text-muted-foreground"> - {session.name}</span>
             </div>
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <Users className="h-4 w-4" />
-                {session.teamMembers} online
-              </div>
+              <OnlinePopover count={session.teamMembers} members={onlineMembers} />
               <div className="flex items-center gap-1.5">
                 <Clock className="h-4 w-4" />
                 {session.location}

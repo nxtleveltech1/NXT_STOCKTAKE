@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -93,6 +93,28 @@ export function StockTable({
   const [sortField, setSortField] = useState<SortField>("status")
   const [sortDir, setSortDir] = useState<SortDir>("asc")
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [localSearch, setLocalSearch] = useState(search)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (search === "") setLocalSearch("")
+  }, [search])
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [])
+
+  const handleSearchChange = (value: string) => {
+    setLocalSearch(value)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      debounceRef.current = null
+      onSearchChange(value)
+      onPageChange(1)
+    }, 280)
+  }
 
   const sorted = useMemo(() => {
     const statusOrder = { pending: 0, variance: 1, counted: 2, verified: 3 }
@@ -167,15 +189,16 @@ export function StockTable({
       <div className="border-b px-4 py-3">
         <div className="flex flex-col gap-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 shrink-0 text-muted-foreground pointer-events-none" />
             <Input
+              type="search"
+              inputMode="search"
+              autoComplete="off"
               placeholder="Search items, SKUs, locations..."
-              value={search}
-              onChange={(e) => {
-                onSearchChange(e.target.value)
-                onPageChange(1)
-              }}
-              className="h-9 bg-secondary/50 pl-9 text-sm"
+              value={localSearch}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="min-h-[44px] bg-secondary/50 pl-9 text-base md:text-sm touch-manipulation"
+              aria-label="Search items, SKUs, locations"
             />
           </div>
 
