@@ -11,7 +11,7 @@ if (!connectionString) throw new Error('DATABASE_URL required')
 const adapter = new PrismaNeon({ connectionString })
 const db = new PrismaClient({ adapter })
 
-const EXCEL_PATH = 'odoo_soh_full_20260206_124339.xlsx'
+const EXCEL_PATH = 'odoo_soh_full_20260215_095441.xlsx'
 
 async function seed() {
   const wb = XLSX.readFile(EXCEL_PATH)
@@ -84,7 +84,7 @@ async function seed() {
       },
     })
   } else {
-    await db.stockSession.updateMany({}, { data: { totalItems: total } })
+    await db.stockSession.updateMany({ where: {}, data: { totalItems: total } })
   }
 
   console.log(`\nDone. ${total} StockItems seeded.`)
