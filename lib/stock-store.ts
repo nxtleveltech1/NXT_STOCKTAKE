@@ -1,10 +1,14 @@
 export type StockItem = {
   id: string
+  odooId: number
   sku: string
   name: string
   category: string
   location: string
+  warehouse: string
   expectedQty: number
+  reservedQty: number
+  availableQty: number
   countedQty: number | null
   variance: number | null
   status: "pending" | "counted" | "variance" | "verified"
@@ -12,6 +16,8 @@ export type StockItem = {
   lastCountedAt: string | null
   barcode: string | null
   uom: string | null
+  serialNumber: string | null
+  owner: string | null
 }
 
 export type TeamMember = {

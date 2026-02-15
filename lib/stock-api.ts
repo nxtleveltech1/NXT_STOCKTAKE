@@ -1,10 +1,14 @@
 export type StockItem = {
   id: string
+  odooId: number
   sku: string
   name: string
   category: string
   location: string
+  warehouse: string
   expectedQty: number
+  reservedQty: number
+  availableQty: number
   countedQty: number | null
   variance: number | null
   status: 'pending' | 'counted' | 'variance' | 'verified'
@@ -12,12 +16,22 @@ export type StockItem = {
   lastCountedAt: string | null
   barcode: string | null
   uom: string | null
+  serialNumber: string | null
+  owner: string | null
+}
+
+export type StockSummary = {
+  total: number
+  pending: number
+  counted: number
+  variance: number
+  verified: number
 }
 
 export type StockSession = {
   id: string
   name: string
-  status: string
+  status: 'live' | 'paused' | 'completed'
   startedAt: string
   location: string
   totalItems: number
@@ -27,23 +41,47 @@ export type StockSession = {
   teamMembers: number
 }
 
+export type StockItemsResponse = {
+  items: StockItem[]
+  total: number
+  filteredTotal: number
+  summary: StockSummary
+}
+
 export async function fetchStockItems(opts?: {
   location?: string
   status?: string
   search?: string
+  category?: string
+  uom?: string
+  warehouse?: string
   page?: number
   limit?: number
-}) {
+}): Promise<StockItemsResponse> {
   const params = new URLSearchParams()
   if (opts?.location) params.set('location', opts.location)
   if (opts?.status) params.set('status', opts.status)
   if (opts?.search) params.set('search', opts.search)
+  if (opts?.category) params.set('category', opts.category)
+  if (opts?.uom) params.set('uom', opts.uom)
+  if (opts?.warehouse) params.set('warehouse', opts.warehouse)
   if (opts?.page) params.set('page', String(opts.page))
   if (opts?.limit) params.set('limit', String(opts.limit ?? 100))
   const res = await fetch(`/api/stock/items?${params}`)
   if (!res.ok) throw new Error('Failed to fetch items')
-  const json = await res.json()
-  return { items: json.items as StockItem[], total: json.total as number }
+  return res.json() as Promise<StockItemsResponse>
+}
+
+export async function fetchCategories(): Promise<string[]> {
+  const res = await fetch('/api/stock/categories')
+  if (!res.ok) throw new Error('Failed to fetch categories')
+  return res.json() as Promise<string[]>
+}
+
+export async function fetchWarehouses(): Promise<string[]> {
+  const res = await fetch('/api/stock/warehouses')
+  if (!res.ok) throw new Error('Failed to fetch warehouses')
+  return res.json() as Promise<string[]>
 }
 
 export async function fetchStockSession() {

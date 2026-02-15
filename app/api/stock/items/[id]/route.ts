@@ -95,11 +95,15 @@ export async function PATCH(
 
   return NextResponse.json({
     id: updated.id,
+    odooId: updated.odooId,
     sku: updated.sku,
     name: updated.name,
     category: updated.category ?? '',
     location: updated.location,
+    warehouse: updated.warehouse ?? '',
     expectedQty: updated.expectedQty,
+    reservedQty: updated.reservedQty ?? 0,
+    availableQty: updated.availableQty ?? 0,
     countedQty: updated.countedQty,
     variance: updated.variance,
     status: updated.status,
@@ -110,5 +114,9 @@ export async function PATCH(
           minute: '2-digit',
         })
       : null,
+    barcode: updated.barcode ?? null,
+    uom: updated.uom ?? null,
+    serialNumber: updated.serialNumber ?? null,
+    owner: updated.owner ?? null,
   })
 }

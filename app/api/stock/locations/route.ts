@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server'
-
-const ALLOWED_LOCATIONS = [
-  'All Zones',
-  'NXT/NXT STOCK',
-  'NXT/NXT STOCK RENTAL',
-] as const
+import { db } from '@/lib/db'
 
 export async function GET() {
-  return NextResponse.json([...ALLOWED_LOCATIONS])
+  const rows = await db.stockItem.findMany({
+    where: { location: { not: '' } },
+    select: { location: true },
+    distinct: ['location'],
+    orderBy: { location: 'asc' },
+  })
+  const fromDb = rows.map((r) => r.location).filter(Boolean)
+  const locations = ['All Zones', ...fromDb]
+  return NextResponse.json(locations)
 }

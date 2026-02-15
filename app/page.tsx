@@ -19,9 +19,12 @@ import {
   fetchZones,
   fetchActivity,
   fetchUoms,
+  fetchCategories,
+  fetchWarehouses,
   updateItemCount,
 } from "@/lib/stock-api"
 import type { StockItem, TeamMember } from "@/lib/stock-store"
+import type { StockSummary } from "@/lib/stock-api"
 import {
   LayoutGrid,
   ScanBarcode,
@@ -51,6 +54,8 @@ function mapOrgMembersToTeam(memberships: { publicUserData?: { userId?: string; 
   })
 }
 
+const emptySummary: StockSummary = { total: 0, pending: 0, counted: 0, variance: 0, verified: 0 }
+
 export default function StockTakeDashboard() {
   const queryClient = useQueryClient()
   const { memberships } = useOrganization({ memberships: { infinite: true } })
@@ -66,15 +71,19 @@ export default function StockTakeDashboard() {
 
   const [activeTab, setActiveTab] = useState("dashboard")
   const [itemsPage, setItemsPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(100)
   const [itemsSearch, setItemsSearch] = useState("")
   const [itemsLocation, setItemsLocation] = useState("All Zones")
   const [itemsStatus, setItemsStatus] = useState("all")
+  const [itemsCategory, setItemsCategory] = useState("all")
+  const [itemsUom, setItemsUom] = useState("all")
+  const [itemsWarehouse, setItemsWarehouse] = useState("all")
   const [countSearch, setCountSearch] = useState("")
   const [countLocation, setCountLocation] = useState("All Zones")
   const [profileItem, setProfileItem] = useState<StockItem | null>(null)
   const [profileOpen, setProfileOpen] = useState(false)
 
-  const { data: session, isLoading: sessionLoading } = useQuery({
+  const { data: session } = useQuery({
     queryKey: ["stock", "session"],
     queryFn: fetchStockSession,
   })
@@ -82,6 +91,16 @@ export default function StockTakeDashboard() {
   const { data: locations = ["All Zones"] } = useQuery({
     queryKey: ["stock", "locations"],
     queryFn: fetchLocations,
+  })
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ["stock", "categories"],
+    queryFn: fetchCategories,
+  })
+
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ["stock", "warehouses"],
+    queryFn: fetchWarehouses,
   })
 
   const { data: zones = [] } = useQuery({
@@ -94,18 +113,25 @@ export default function StockTakeDashboard() {
       "stock",
       "items",
       itemsPage,
+      itemsPerPage,
       itemsSearch,
       itemsLocation,
       itemsStatus,
+      itemsCategory,
+      itemsUom,
+      itemsWarehouse,
     ],
     queryFn: () =>
       fetchStockItems({
         page: itemsPage,
-        limit: 100,
+        limit: itemsPerPage,
         search: itemsSearch || undefined,
         location:
           itemsLocation && itemsLocation !== "All Zones" ? itemsLocation : undefined,
         status: itemsStatus !== "all" ? itemsStatus : undefined,
+        category: itemsCategory !== "all" ? itemsCategory : undefined,
+        uom: itemsUom !== "all" ? itemsUom : undefined,
+        warehouse: itemsWarehouse !== "all" ? itemsWarehouse : undefined,
       }),
   })
 
@@ -164,8 +190,45 @@ export default function StockTakeDashboard() {
     setProfileOpen(true)
   }, [])
 
+  const handleRefresh = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["stock"] })
+  }, [queryClient])
+
   const items = itemsData?.items ?? []
   const countItems = countItemsData?.items ?? []
+  const summary = itemsData?.summary ?? emptySummary
+  const filteredTotal = itemsData?.filteredTotal ?? 0
+
+  // Shared StockTable props to avoid duplication
+  const stockTableProps = {
+    items,
+    total: itemsData?.total ?? 0,
+    filteredTotal,
+    summary,
+    page: itemsPage,
+    onPageChange: setItemsPage,
+    search: itemsSearch,
+    onSearchChange: setItemsSearch,
+    zone: itemsLocation,
+    onZoneChange: setItemsLocation,
+    statusFilter: itemsStatus,
+    onStatusFilterChange: setItemsStatus,
+    categoryFilter: itemsCategory,
+    onCategoryFilterChange: setItemsCategory,
+    uomFilter: itemsUom,
+    onUomFilterChange: setItemsUom,
+    warehouseFilter: itemsWarehouse,
+    onWarehouseFilterChange: setItemsWarehouse,
+    locations,
+    categories,
+    uoms,
+    warehouses,
+    onSelectItem: handleSelectItem,
+    onRefresh: handleRefresh,
+    isLoading: itemsLoading,
+    itemsPerPage,
+    onItemsPerPageChange: setItemsPerPage,
+  }
 
   if (!mounted) {
     return (
@@ -262,21 +325,7 @@ export default function StockTakeDashboard() {
           </TabsContent>
 
           <TabsContent value="items" className="flex-1 p-4 lg:hidden">
-            <StockTable
-              items={items}
-              total={itemsData?.total ?? 0}
-              page={itemsPage}
-              onPageChange={setItemsPage}
-              search={itemsSearch}
-              onSearchChange={setItemsSearch}
-              zone={itemsLocation}
-              onZoneChange={setItemsLocation}
-              statusFilter={itemsStatus}
-              onStatusFilterChange={setItemsStatus}
-              locations={locations}
-              onSelectItem={handleSelectItem}
-              isLoading={itemsLoading}
-            />
+            <StockTable {...stockTableProps} />
           </TabsContent>
 
           <TabsContent value="team" className="flex-1 p-4 lg:hidden">
@@ -309,21 +358,7 @@ export default function StockTakeDashboard() {
               </div>
 
               <div className="col-span-6">
-                <StockTable
-                  items={items}
-                  total={itemsData?.total ?? 0}
-                  page={itemsPage}
-                  onPageChange={setItemsPage}
-                  search={itemsSearch}
-                  onSearchChange={setItemsSearch}
-                  zone={itemsLocation}
-                  onZoneChange={setItemsLocation}
-                  statusFilter={itemsStatus}
-                  onStatusFilterChange={setItemsStatus}
-                  locations={locations}
-                  onSelectItem={handleSelectItem}
-                  isLoading={itemsLoading}
-                />
+                <StockTable {...stockTableProps} />
               </div>
 
               <div className="col-span-3 flex flex-col gap-4">
