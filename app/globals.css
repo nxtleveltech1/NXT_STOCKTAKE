@@ -56,6 +56,17 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "ss01" 1, "ss02" 1;
+    line-height: 1.6;
+  }
+  /* Comfortable reading for body text */
+  p {
+    @apply leading-relaxed;
+  }
+  /* Headings: clearer hierarchy, slightly tighter tracking */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight text-foreground;
+    letter-spacing: -0.02em;
   }
 }
 

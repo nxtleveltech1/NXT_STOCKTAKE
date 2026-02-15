@@ -3,13 +3,22 @@ import type { Metadata, Viewport } from "next"
 import { ClerkProvider } from "@clerk/nextjs"
 
 export const dynamic = "force-dynamic"
-import { Inter, JetBrains_Mono } from 'next/font/google'
+import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google"
 
-import { Providers } from '@/components/providers'
-import './globals.css'
+import { Providers } from "@/components/providers"
+import "./globals.css"
 
-const _inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
-const _jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains-mono' })
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+})
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+})
 
 export const metadata: Metadata = {
   title: 'StockPulse AV - Live Stock Take Management',
@@ -31,7 +40,7 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en">
+      <html lang="en" className={`${plusJakarta.variable} ${jetbrainsMono.variable}`}>
         <body className="font-sans antialiased min-h-screen" suppressHydrationWarning>
           <Providers>{children}</Providers>
         </body>
