@@ -66,6 +66,7 @@ type SortDir = "asc" | "desc"
 export type ColumnKey =
   | "sku"
   | "name"
+  | "supplier"
   | "category"
   | "location"
   | "warehouse"
@@ -80,6 +81,8 @@ export type ColumnKey =
   | "lastCountedBy"
   | "serialNumber"
   | "owner"
+  | "costPrice"
+  | "listPrice"
 
 type ColumnDef = {
   key: ColumnKey
@@ -92,18 +95,21 @@ type ColumnDef = {
 }
 
 const ALL_COLUMNS: ColumnDef[] = [
+  { key: "supplier", label: "Supplier", sortable: true, sortField: "name", defaultVisible: true, minWidth: "140px" },
   { key: "sku", label: "SKU", sortable: true, sortField: "sku", defaultVisible: true, minWidth: "100px" },
-  { key: "name", label: "Product", sortable: true, sortField: "name", defaultVisible: true, minWidth: "200px" },
+  { key: "name", label: "Product Name", sortable: true, sortField: "name", defaultVisible: true, minWidth: "200px" },
   { key: "category", label: "Category", sortable: true, sortField: "category", defaultVisible: false },
   { key: "location", label: "Location", sortable: true, sortField: "location", defaultVisible: true },
   { key: "warehouse", label: "Warehouse", sortable: true, sortField: "warehouse", defaultVisible: false },
-  { key: "barcode", label: "Barcode", sortable: false, defaultVisible: true },
+  { key: "barcode", label: "Barcode", sortable: false, defaultVisible: false },
   { key: "uom", label: "UOM", sortable: true, sortField: "uom", defaultVisible: true },
   { key: "expectedQty", label: "Expected", sortable: true, sortField: "expectedQty", align: "right", defaultVisible: true },
   { key: "reservedQty", label: "Reserved", sortable: false, align: "right", defaultVisible: false },
   { key: "availableQty", label: "Available", sortable: false, align: "right", defaultVisible: false },
   { key: "countedQty", label: "Counted", sortable: true, sortField: "countedQty", align: "right", defaultVisible: true },
   { key: "variance", label: "Variance", sortable: true, sortField: "variance", align: "right", defaultVisible: true },
+  { key: "costPrice", label: "Cost Price", sortable: false, align: "right", defaultVisible: false },
+  { key: "listPrice", label: "List Price", sortable: false, align: "right", defaultVisible: false },
   { key: "status", label: "Status", sortable: true, sortField: "status", defaultVisible: true },
   { key: "lastCountedBy", label: "Counted By", sortable: false, defaultVisible: true },
   { key: "serialNumber", label: "Serial Number", sortable: false, defaultVisible: false },
@@ -164,10 +170,13 @@ export type StockTableProps = {
   onUomFilterChange: (u: string) => void
   warehouseFilter: string
   onWarehouseFilterChange: (w: string) => void
+  supplierFilter: string
+  onSupplierFilterChange: (s: string) => void
   locations: string[]
   categories: string[]
   uoms: string[]
   warehouses: string[]
+  suppliers: string[]
   onSelectItem: (item: StockItem) => void
   onRefresh: () => void
   isLoading?: boolean
@@ -198,10 +207,13 @@ export function StockTable({
   onUomFilterChange,
   warehouseFilter,
   onWarehouseFilterChange,
+  supplierFilter,
+  onSupplierFilterChange,
   locations,
   categories,
   uoms,
   warehouses,
+  suppliers,
   onSelectItem,
   onRefresh,
   isLoading,
@@ -337,6 +349,7 @@ export function StockTable({
     categoryFilter !== "all" ? 1 : 0,
     uomFilter !== "all" ? 1 : 0,
     warehouseFilter !== "all" ? 1 : 0,
+    supplierFilter !== "all" ? 1 : 0,
   ].reduce((a, b) => a + b, 0)
 
   // -----------------------------------------------------------------------
@@ -415,6 +428,13 @@ export function StockTable({
         {/* Filter row */}
         <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2.5">
           <FilterSelect
+            value={supplierFilter}
+            onValueChange={(v) => { onSupplierFilterChange(v); resetPage() }}
+            placeholder="All suppliers"
+            options={["all", ...suppliers]}
+            formatLabel={(v) => v === "all" ? "All suppliers" : v}
+          />
+          <FilterSelect
             value={zone}
             onValueChange={(v) => { onZoneChange(v); resetPage() }}
             placeholder="All Zones"
@@ -459,6 +479,7 @@ export function StockTable({
                 onCategoryFilterChange("all")
                 onUomFilterChange("all")
                 onWarehouseFilterChange("all")
+                onSupplierFilterChange("all")
                 resetPage()
               }}
             >
@@ -721,6 +742,9 @@ function getCellValue(item: StockItem, key: ColumnKey): string | number | null {
     case "lastCountedBy": return item.lastCountedBy
     case "serialNumber": return item.serialNumber
     case "owner": return item.owner
+    case "supplier": return item.supplier
+    case "costPrice": return item.costPrice
+    case "listPrice": return item.listPrice
     default: return null
   }
 }
@@ -784,6 +808,16 @@ function CellRenderer({ item, columnKey }: { item: StockItem; columnKey: ColumnK
       return <span className="font-mono text-xs text-muted-foreground">{item.serialNumber ?? "—"}</span>
     case "owner":
       return <span className="text-xs text-muted-foreground">{item.owner ?? "—"}</span>
+    case "supplier":
+      return <span className="text-xs text-muted-foreground">{item.supplier ?? "—"}</span>
+    case "costPrice":
+      return item.costPrice != null
+        ? <span className="font-mono text-xs text-muted-foreground">{item.costPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        : <span className="text-xs text-muted-foreground">—</span>
+    case "listPrice":
+      return item.listPrice != null
+        ? <span className="font-mono text-xs text-muted-foreground">{item.listPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        : <span className="text-xs text-muted-foreground">—</span>
     default:
       return null
   }

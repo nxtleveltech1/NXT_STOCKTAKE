@@ -18,6 +18,10 @@ export type StockItem = {
   uom: string | null
   serialNumber: string | null
   owner: string | null
+  supplier: string | null
+  supplierId: number | null
+  listPrice: number | null
+  costPrice: number | null
 }
 
 export type TeamMember = {

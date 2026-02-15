@@ -9,6 +9,7 @@ export async function GET(request: Request) {
   const category = searchParams.get('category')
   const uom = searchParams.get('uom')
   const warehouse = searchParams.get('warehouse')
+  const supplier = searchParams.get('supplier')
   const page = parseInt(searchParams.get('page') ?? '1', 10)
   const limit = Math.min(parseInt(searchParams.get('limit') ?? '100', 10), 500)
   const skip = (page - 1) * limit
@@ -31,6 +32,9 @@ export async function GET(request: Request) {
   if (warehouse && warehouse !== 'all') {
     where.warehouse = warehouse
   }
+  if (supplier && supplier !== 'all') {
+    where.supplier = supplier
+  }
   if (search?.trim()) {
     const s = search.trim()
     const orConditions: NonNullable<WhereInput>['OR'] = [
@@ -42,6 +46,7 @@ export async function GET(request: Request) {
         { barcode: { contains: s, mode: 'insensitive' } },
         { category: { contains: s, mode: 'insensitive' } },
         { serialNumber: { contains: s, mode: 'insensitive' } },
+        { supplier: { contains: s, mode: 'insensitive' } },
       )
     }
     where.OR = orConditions
@@ -95,6 +100,10 @@ export async function GET(request: Request) {
     uom: r.uom ?? null,
     serialNumber: r.serialNumber ?? null,
     owner: r.owner ?? null,
+    supplier: r.supplier ?? null,
+    supplierId: r.supplierId ?? null,
+    listPrice: r.listPrice ?? null,
+    costPrice: r.costPrice ?? null,
   }))
 
   return NextResponse.json({ items: mapped, total, filteredTotal: total, summary })

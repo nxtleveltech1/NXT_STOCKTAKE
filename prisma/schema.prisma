@@ -9,6 +9,7 @@ datasource db {
 model StockItem {
   id             String    @id @default(cuid())
   odooId         Int       @unique
+  odooProductId  Int?      // product.product id in Odoo
   sku            String
   name           String
   category       String?
@@ -26,11 +27,17 @@ model StockItem {
   uom            String?
   serialNumber   String?
   owner          String?
+  supplier       String?   // Primary supplier name from Odoo
+  supplierId     Int?      // Odoo partner_id of primary supplier
+  listPrice      Float?    // Sales price from Odoo
+  costPrice      Float?    // Standard cost from Odoo
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
   @@index([location])
   @@index([status])
+  @@index([supplier])
+  @@index([sku])
 }
 
 model StockSession {

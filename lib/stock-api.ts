@@ -18,6 +18,10 @@ export type StockItem = {
   uom: string | null
   serialNumber: string | null
   owner: string | null
+  supplier: string | null
+  supplierId: number | null
+  listPrice: number | null
+  costPrice: number | null
 }
 
 export type StockSummary = {
@@ -55,6 +59,7 @@ export async function fetchStockItems(opts?: {
   category?: string
   uom?: string
   warehouse?: string
+  supplier?: string
   page?: number
   limit?: number
 }): Promise<StockItemsResponse> {
@@ -65,6 +70,7 @@ export async function fetchStockItems(opts?: {
   if (opts?.category) params.set('category', opts.category)
   if (opts?.uom) params.set('uom', opts.uom)
   if (opts?.warehouse) params.set('warehouse', opts.warehouse)
+  if (opts?.supplier) params.set('supplier', opts.supplier)
   if (opts?.page) params.set('page', String(opts.page))
   if (opts?.limit) params.set('limit', String(opts.limit ?? 100))
   const res = await fetch(`/api/stock/items?${params}`)
@@ -81,6 +87,12 @@ export async function fetchCategories(): Promise<string[]> {
 export async function fetchWarehouses(): Promise<string[]> {
   const res = await fetch('/api/stock/warehouses')
   if (!res.ok) throw new Error('Failed to fetch warehouses')
+  return res.json() as Promise<string[]>
+}
+
+export async function fetchSuppliers(): Promise<string[]> {
+  const res = await fetch('/api/stock/suppliers')
+  if (!res.ok) throw new Error('Failed to fetch suppliers')
   return res.json() as Promise<string[]>
 }
 

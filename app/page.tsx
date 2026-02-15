@@ -21,6 +21,7 @@ import {
   fetchUoms,
   fetchCategories,
   fetchWarehouses,
+  fetchSuppliers,
   updateItemCount,
 } from "@/lib/stock-api"
 import type { StockItem, TeamMember } from "@/lib/stock-store"
@@ -78,6 +79,7 @@ export default function StockTakeDashboard() {
   const [itemsCategory, setItemsCategory] = useState("all")
   const [itemsUom, setItemsUom] = useState("all")
   const [itemsWarehouse, setItemsWarehouse] = useState("all")
+  const [itemsSupplier, setItemsSupplier] = useState("all")
   const [countSearch, setCountSearch] = useState("")
   const [countLocation, setCountLocation] = useState("All Zones")
   const [profileItem, setProfileItem] = useState<StockItem | null>(null)
@@ -103,6 +105,11 @@ export default function StockTakeDashboard() {
     queryFn: fetchWarehouses,
   })
 
+  const { data: suppliers = [] } = useQuery({
+    queryKey: ["stock", "suppliers"],
+    queryFn: fetchSuppliers,
+  })
+
   const { data: zones = [] } = useQuery({
     queryKey: ["stock", "zones"],
     queryFn: fetchZones,
@@ -120,6 +127,7 @@ export default function StockTakeDashboard() {
       itemsCategory,
       itemsUom,
       itemsWarehouse,
+      itemsSupplier,
     ],
     queryFn: () =>
       fetchStockItems({
@@ -132,6 +140,7 @@ export default function StockTakeDashboard() {
         category: itemsCategory !== "all" ? itemsCategory : undefined,
         uom: itemsUom !== "all" ? itemsUom : undefined,
         warehouse: itemsWarehouse !== "all" ? itemsWarehouse : undefined,
+        supplier: itemsSupplier !== "all" ? itemsSupplier : undefined,
       }),
   })
 
@@ -219,10 +228,13 @@ export default function StockTakeDashboard() {
     onUomFilterChange: setItemsUom,
     warehouseFilter: itemsWarehouse,
     onWarehouseFilterChange: setItemsWarehouse,
+    supplierFilter: itemsSupplier,
+    onSupplierFilterChange: setItemsSupplier,
     locations,
     categories,
     uoms,
     warehouses,
+    suppliers,
     onSelectItem: handleSelectItem,
     onRefresh: handleRefresh,
     isLoading: itemsLoading,

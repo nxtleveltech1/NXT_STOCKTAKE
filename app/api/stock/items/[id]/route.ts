@@ -118,5 +118,9 @@ export async function PATCH(
     uom: updated.uom ?? null,
     serialNumber: updated.serialNumber ?? null,
     owner: updated.owner ?? null,
+    supplier: updated.supplier ?? null,
+    supplierId: updated.supplierId ?? null,
+    listPrice: updated.listPrice ?? null,
+    costPrice: updated.costPrice ?? null,
   })
 }
