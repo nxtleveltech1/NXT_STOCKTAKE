@@ -36,7 +36,12 @@ export async function PATCH(
   if (typeof body.barcode === 'string')
     updateData.barcode = body.barcode.trim() || null
   if (typeof body.uom === 'string') updateData.uom = body.uom.trim() || null
-  const ALLOWED_LOCATIONS = ['NXT/NXT STOCK', 'NXT/NXT STOCK/Rental']
+  const ALLOWED_LOCATIONS = [
+    'NXT/NXT STOCK',
+    'NXT/NXT STOCK/Rental',
+    'NXT/NXT STOCK/Secondhand',
+    'NXT/NXT STOCK/Studio Rentals',
+  ]
   if (typeof body.location === 'string' && body.location.trim()) {
     const loc = body.location.trim()
     if (ALLOWED_LOCATIONS.includes(loc)) updateData.location = loc

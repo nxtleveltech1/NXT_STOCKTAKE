@@ -81,7 +81,12 @@ export function ProductProfileSheet({
     },
   })
 
-  const ALLOWED_LOCATIONS = ["NXT/NXT STOCK", "NXT/NXT STOCK/Rental"]
+  const ALLOWED_LOCATIONS = [
+    "NXT/NXT STOCK",
+    "NXT/NXT STOCK/Rental",
+    "NXT/NXT STOCK/Secondhand",
+    "NXT/NXT STOCK/Studio Rentals",
+  ]
 
   useEffect(() => {
     if (item && open) {
@@ -102,7 +107,12 @@ export function ProductProfileSheet({
     }
   }, [item, open, form])
 
-  const EDITABLE_LOCATIONS = ["NXT/NXT STOCK", "NXT/NXT STOCK/Rental"]
+  const EDITABLE_LOCATIONS = [
+    "NXT/NXT STOCK",
+    "NXT/NXT STOCK/Rental",
+    "NXT/NXT STOCK/Secondhand",
+    "NXT/NXT STOCK/Studio Rentals",
+  ]
   const locationsForSelect = locations.filter((l) =>
     EDITABLE_LOCATIONS.includes(l)
   )
