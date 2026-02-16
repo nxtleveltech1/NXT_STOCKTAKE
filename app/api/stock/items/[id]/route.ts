@@ -41,6 +41,7 @@ export async function PATCH(
     'NXT/NXT STOCK/Rental',
     'NXT/NXT STOCK/Secondhand',
     'NXT/NXT STOCK/Studio Rentals',
+    'NXT/NXT STOCK/Repairs',
   ]
   if (typeof body.location === 'string' && body.location.trim()) {
     const loc = body.location.trim()

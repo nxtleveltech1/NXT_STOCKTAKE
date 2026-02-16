@@ -6,6 +6,7 @@ const ALLOWED_LOCATIONS = [
   'NXT/NXT STOCK/Rental',
   'NXT/NXT STOCK/Secondhand',
   'NXT/NXT STOCK/Studio Rentals',
+  'NXT/NXT STOCK/Repairs',
 ]
 
 export async function GET() {
