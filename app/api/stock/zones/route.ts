@@ -9,7 +9,7 @@ const ALLOWED_LOCATIONS = [
 ]
 
 export async function GET() {
-  const zones = await db.stockItem.groupBy({
+  const grouped = await db.stockItem.groupBy({
     by: ['location'],
     where: {
       location: { in: ALLOWED_LOCATIONS },
@@ -18,24 +18,29 @@ export async function GET() {
     _sum: { expectedQty: true },
   })
 
+  const groupMap = new Map(grouped.map((g) => [g.location, g]))
+
   const withStatus = await Promise.all(
-    zones.map(async (z) => {
+    ALLOWED_LOCATIONS.map(async (loc) => {
+      const g = groupMap.get(loc)
+      const total = g?._count.id ?? 0
+      const totalQty = g?._sum.expectedQty ?? 0
+
       const [counted, variances] = await Promise.all([
         db.stockItem.count({
           where: {
-            location: z.location,
+            location: loc,
             status: { in: ['counted', 'variance', 'verified'] },
           },
         }),
         db.stockItem.count({
-          where: { location: z.location, status: 'variance' },
+          where: { location: loc, status: 'variance' },
         }),
       ])
-      const total = z._count.id
-      const totalQty = z._sum.expectedQty ?? 0
+
       return {
-        name: z.location.split('/').pop() ?? z.location,
-        code: z.location.slice(0, 1).toUpperCase(),
+        name: loc.split('/').pop() ?? loc,
+        code: loc.split('/').pop()?.slice(0, 1).toUpperCase() ?? 'Z',
         totalItems: totalQty > 0 ? totalQty : total,
         countedItems: counted,
         variances,
@@ -44,5 +49,5 @@ export async function GET() {
     })
   )
 
-  return NextResponse.json(withStatus.sort((a, b) => a.name.localeCompare(b.name)))
+  return NextResponse.json(withStatus)
 }
