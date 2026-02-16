@@ -77,7 +77,7 @@ export function ProductProfileSheet({
     },
   })
 
-  const ALLOWED_LOCATIONS = ["NXT/NXT STOCK", "NXT/NXT STOCK RENTAL"]
+  const ALLOWED_LOCATIONS = ["NXT/NXT STOCK", "NXT/NXT STOCK/Rental"]
 
   useEffect(() => {
     if (item && open) {
@@ -97,7 +97,7 @@ export function ProductProfileSheet({
     }
   }, [item, open, form])
 
-  const EDITABLE_LOCATIONS = ["NXT/NXT STOCK", "NXT/NXT STOCK RENTAL"]
+  const EDITABLE_LOCATIONS = ["NXT/NXT STOCK", "NXT/NXT STOCK/Rental"]
   const locationsForSelect = locations.filter((l) =>
     EDITABLE_LOCATIONS.includes(l)
   )

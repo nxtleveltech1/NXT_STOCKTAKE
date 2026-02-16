@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
-const ALLOWED_LOCATIONS = ['NXT/NXT STOCK', 'NXT/NXT STOCK RENTAL']
+const ALLOWED_LOCATIONS = ['NXT/NXT STOCK', 'NXT/NXT STOCK/Rental']
 
 export async function GET() {
   const zones = await db.stockItem.groupBy({
