@@ -15,11 +15,11 @@ model StockItem {
   category       String?
   location       String
   warehouse      String?
-  expectedQty    Int
-  reservedQty    Int?
-  availableQty   Int?
-  countedQty     Int?
-  variance       Int?
+  expectedQty    Float
+  reservedQty    Float?
+  availableQty   Float?
+  countedQty     Float?
+  variance       Float?
   status         String    @default("pending") // pending | counted | variance | verified
   lastCountedBy  String?
   lastCountedAt  DateTime?

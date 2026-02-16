@@ -21,12 +21,12 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'StockPulse AV - Live Stock Take Management',
-  description: 'Real-time stock take management for Audio Visual retail teams',
+  title: 'NXT STOCK PULSE - Live Stock Take Management',
+  description: 'Real-time stock take management powered by NXT STOCK PULSE',
 }
 
 export const viewport: Viewport = {
-  themeColor: '#f6f8fa',
+  themeColor: '#0a0a0a',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,

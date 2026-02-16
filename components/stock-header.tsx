@@ -152,7 +152,7 @@ export function StockHeader({
               <BarChart3 className="h-4 w-4 text-primary-foreground" />
             </div>
             <span className="hidden text-lg font-semibold tracking-tight text-foreground sm:inline">
-              StockPulse <span className="text-primary">AV</span>
+              NXT STOCK <span className="text-primary">PULSE</span>
             </span>
           </div>
 

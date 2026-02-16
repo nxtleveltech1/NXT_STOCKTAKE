@@ -119,7 +119,7 @@ export default function SelectOrgPage() {
     <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-muted/30 p-4">
       <div className="flex items-center gap-2 text-foreground">
         <Building2 className="h-8 w-8 text-primary" />
-        <span className="text-xl font-semibold">StockPulse AV</span>
+        <span className="text-xl font-semibold">NXT STOCK <span className="text-primary">PULSE</span></span>
       </div>
 
       <div className="w-full max-w-md space-y-6">

@@ -10,39 +10,39 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 220 20% 10%;
-    --card: 0 0% 100%;
-    --card-foreground: 220 20% 10%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 10%;
-    --primary: 152 55% 38%;
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 72% 50%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 16% 93%;
-    --secondary-foreground: 220 16% 36%;
-    --muted: 210 14% 95%;
-    --muted-foreground: 215 14% 46%;
-    --accent: 152 55% 38%;
+    --secondary: 0 10% 12%;
+    --secondary-foreground: 0 0% 70%;
+    --muted: 0 6% 10%;
+    --muted-foreground: 0 0% 50%;
+    --accent: 0 72% 50%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 72% 51%;
+    --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 16% 88%;
-    --input: 214 16% 88%;
-    --ring: 152 55% 38%;
-    --chart-1: 152 55% 38%;
-    --chart-2: 200 65% 46%;
-    --chart-3: 32 90% 46%;
-    --chart-4: 0 72% 51%;
-    --chart-5: 262 55% 52%;
+    --border: 0 8% 16%;
+    --input: 0 8% 16%;
+    --ring: 0 72% 50%;
+    --chart-1: 0 72% 50%;
+    --chart-2: 20 80% 50%;
+    --chart-3: 340 65% 47%;
+    --chart-4: 210 60% 50%;
+    --chart-5: 280 55% 50%;
     --radius: 0.625rem;
-    --sidebar-background: 210 18% 96%;
-    --sidebar-foreground: 220 14% 36%;
-    --sidebar-primary: 152 55% 38%;
+    --sidebar-background: 0 6% 5%;
+    --sidebar-foreground: 0 0% 70%;
+    --sidebar-primary: 0 72% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 16% 93%;
-    --sidebar-accent-foreground: 220 20% 10%;
-    --sidebar-border: 214 16% 88%;
-    --sidebar-ring: 152 55% 38%;
+    --sidebar-accent: 0 10% 12%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 8% 16%;
+    --sidebar-ring: 0 72% 50%;
     --success: 152 55% 38%;
     --success-foreground: 0 0% 100%;
     --warning: 32 90% 46%;
@@ -73,7 +73,7 @@
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: hsl(214 16% 88%) transparent;
+    scrollbar-color: hsl(0 8% 16%) transparent;
   }
   .animate-pulse-slow {
     animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
