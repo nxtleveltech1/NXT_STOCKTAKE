@@ -355,7 +355,7 @@ export default function StockTakeDashboard() {
             {session && <SessionStats session={session} />}
 
             <div className="grid flex-1 grid-cols-12 gap-4">
-              <div className="col-span-3 flex flex-col gap-4">
+              <div className="col-span-2 flex flex-col gap-4">
                 <QuickCount
                   items={countItems}
                   onUpdateCount={handleUpdateCount}
@@ -369,11 +369,11 @@ export default function StockTakeDashboard() {
                 <ZoneProgress zones={zones} />
               </div>
 
-              <div className="col-span-6">
+              <div className="col-span-8">
                 <StockTable {...stockTableProps} />
               </div>
 
-              <div className="col-span-3 flex flex-col gap-4">
+              <div className="col-span-2 flex flex-col gap-4">
                 <TeamPanel members={teamMembers} />
                 <ActivityFeed events={activityEvents} />
               </div>

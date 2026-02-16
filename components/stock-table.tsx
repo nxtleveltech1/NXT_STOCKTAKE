@@ -373,8 +373,8 @@ export function StockTable({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Summary stat cards */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      {/* Summary stat cards - hidden on mobile */}
+      <div className="hidden lg:grid grid-cols-5 gap-3">
         <SummaryCard
           label="TOTAL ITEMS"
           value={summary.total}
