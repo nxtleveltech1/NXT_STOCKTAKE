@@ -267,6 +267,7 @@ export default function StockTakeDashboard() {
         onOpenChange={setProfileOpen}
         locations={locations}
         uoms={uoms}
+        suppliers={suppliers}
         onSuccess={() => queryClient.invalidateQueries({ queryKey: ["stock"] })}
       />
 

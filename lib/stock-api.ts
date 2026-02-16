@@ -140,6 +140,7 @@ export type UpdateStockItemInput = {
   warehouse?: string | null
   serialNumber?: string | null
   owner?: string | null
+  supplier?: string | null
   countedQty?: number
 }
 
@@ -157,6 +158,7 @@ export async function updateStockItem(
   if (data.warehouse !== undefined) body.warehouse = data.warehouse
   if (data.serialNumber !== undefined) body.serialNumber = data.serialNumber
   if (data.owner !== undefined) body.owner = data.owner
+  if (data.supplier !== undefined) body.supplier = data.supplier
   if (typeof data.countedQty === 'number') body.countedQty = data.countedQty
 
   const res = await fetch(`/api/stock/items/${id}`, {

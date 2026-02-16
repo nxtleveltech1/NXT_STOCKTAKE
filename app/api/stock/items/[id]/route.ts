@@ -49,6 +49,8 @@ export async function PATCH(
     updateData.serialNumber = body.serialNumber.trim() || null
   if (typeof body.owner === 'string')
     updateData.owner = body.owner.trim() || null
+  if (typeof body.supplier === 'string')
+    updateData.supplier = body.supplier.trim() || null
 
   if (Object.keys(updateData).length === 0 && countedQty === null)
     return NextResponse.json(

@@ -33,6 +33,7 @@ import {
   Menu,
   X,
 } from "lucide-react"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 function LivePulse() {
   return (
@@ -251,6 +252,7 @@ export function StockHeader({
                 },
               }}
             />
+            <ThemeToggle />
             <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
               <Link href="/settings/team" aria-label="Team settings">
                 <Settings className="h-4 w-4" />
@@ -334,6 +336,7 @@ export function StockHeader({
               </Button>
             </div>
             <div className="flex items-center justify-end gap-2 border-t pt-3">
+              <ThemeToggle />
               <OrganizationSwitcher
                 hidePersonal
                 afterSelectOrganizationUrl="/"

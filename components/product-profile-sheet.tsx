@@ -42,6 +42,7 @@ const schema = z.object({
   uom: z.string().optional(),
   location: z.string().min(1, "Location is required"),
   category: z.string().optional(),
+  supplier: z.string().optional(),
   countedQty: z.union([z.number().min(0), z.literal("")]),
 })
 
@@ -53,6 +54,7 @@ type ProductProfileSheetProps = {
   onOpenChange: (open: boolean) => void
   locations: string[]
   uoms: string[]
+  suppliers: string[]
   onSuccess: () => void
 }
 
@@ -62,6 +64,7 @@ export function ProductProfileSheet({
   onOpenChange,
   locations,
   uoms,
+  suppliers,
   onSuccess,
 }: ProductProfileSheetProps) {
   const form = useForm<FormValues>({
@@ -73,6 +76,7 @@ export function ProductProfileSheet({
       uom: "",
       location: "",
       category: "",
+      supplier: "",
       countedQty: "" as number | "",
     },
   })
@@ -92,6 +96,7 @@ export function ProductProfileSheet({
         uom: item.uom ?? "",
         location,
         category: item.category ?? "",
+        supplier: item.supplier ?? "",
         countedQty: item.countedQty ?? ("" as number | ""),
       })
     }
@@ -113,6 +118,7 @@ export function ProductProfileSheet({
       uom: values.uom || null,
       location: values.location,
       category: values.category || null,
+      supplier: values.supplier || null,
     }
     if (countedQty !== undefined) data.countedQty = countedQty
 
@@ -285,6 +291,34 @@ export function ProductProfileSheet({
                     <FormControl>
                       <Input {...field} placeholder="Optional" />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="supplier"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Supplier</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value || undefined}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select supplier" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {suppliers.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {s}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

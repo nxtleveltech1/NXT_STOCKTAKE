@@ -60,19 +60,30 @@ async function mcpCall(method: string, params: Record<string, unknown>): Promise
   const contentType = res.headers.get('content-type') ?? ''
 
   if (contentType.includes('text/event-stream')) {
-    // SSE response — parse the data events
     const text = await res.text()
-    const lines = text.split('\n')
-    let lastData = ''
-    for (const line of lines) {
+    // Parse SSE properly: events are separated by blank lines.
+    // Each event can have multiple data: lines that must be concatenated.
+    const events: string[] = []
+    let currentData = ''
+    for (const line of text.split('\n')) {
       if (line.startsWith('data: ')) {
-        lastData = line.slice(6)
+        currentData += (currentData ? '\n' : '') + line.slice(6)
+      } else if (line.trim() === '' && currentData) {
+        events.push(currentData)
+        currentData = ''
       }
     }
-    if (lastData) {
-      return JSON.parse(lastData)
+    if (currentData) events.push(currentData)
+
+    // Use the last valid JSON-RPC result event
+    for (let i = events.length - 1; i >= 0; i--) {
+      try {
+        const parsed = JSON.parse(events[i])
+        if (parsed?.result || parsed?.error) return parsed
+      } catch { /* not valid JSON, skip */ }
     }
-    throw new Error(`MCP SSE response had no data events: ${text.slice(0, 500)}`)
+
+    throw new Error(`MCP SSE: no valid JSON-RPC result in ${events.length} events. Raw: ${text.slice(0, 500)}`)
   }
 
   return res.json()
@@ -90,15 +101,30 @@ async function mcpInitialize(): Promise<void> {
 }
 
 async function mcpToolCall(toolName: string, args: Record<string, unknown>): Promise<unknown> {
-  const result = (await mcpCall('tools/call', { name: toolName, arguments: args })) as {
-    result?: { content?: Array<{ text?: string }> }
+  const raw = (await mcpCall('tools/call', { name: toolName, arguments: args })) as {
+    result?: { content?: Array<{ type?: string; text?: string }>; isError?: boolean }
+    error?: { code?: number; message?: string }
   }
-  // Extract the text content from the MCP response
-  const content = result?.result?.content
+
+  // Handle JSON-RPC level errors
+  if (raw?.error) {
+    throw new Error(`MCP error [${raw.error.code}]: ${raw.error.message}`)
+  }
+
+  // Handle tool-level errors
+  if (raw?.result?.isError) {
+    const errText = raw.result.content?.[0]?.text ?? JSON.stringify(raw.result)
+    throw new Error(`MCP tool error (${toolName}): ${errText}`)
+  }
+
+  // Extract text content from successful response
+  const content = raw?.result?.content
   if (Array.isArray(content) && content[0]?.text) {
     return JSON.parse(content[0].text)
   }
-  return result
+
+  console.warn(`  ⚠ Unexpected MCP response shape for ${toolName}:`, JSON.stringify(raw).slice(0, 300))
+  return raw
 }
 
 // ---------------------------------------------------------------------------
@@ -198,36 +224,84 @@ async function fetchProducts(productIds: number[]): Promise<Map<number, OdooProd
   return products
 }
 
-async function fetchSupplierInfo(): Promise<Map<number, OdooSupplierInfo[]>> {
-  // Fetch ALL supplier info and build a map by product_tmpl_id
+async function fetchSupplierInfo(
+  templateIds?: number[]
+): Promise<Map<number, OdooSupplierInfo[]>> {
   const suppliersByTmpl = new Map<number, OdooSupplierInfo[]>()
-  let offset = 0
-  const limit = 2000
 
-  while (true) {
-    console.log(`  Fetching supplier info offset=${offset}...`)
-    const batch = (await mcpToolCall('search_read', {
-      model: 'product.supplierinfo',
-      domain: [],
-      fields: ['partner_id', 'product_tmpl_id', 'product_id', 'price', 'discount'],
-      limit,
-      offset,
-    })) as OdooSupplierInfo[]
+  // Strategy 1: Fetch supplier info for specific template IDs (more reliable)
+  if (templateIds && templateIds.length > 0) {
+    const batchSize = 200
+    for (let i = 0; i < templateIds.length; i += batchSize) {
+      const batchIds = templateIds.slice(i, i + batchSize)
+      console.log(`  Fetching supplier info for templates ${i + 1}-${i + batchIds.length} of ${templateIds.length}...`)
+      try {
+        const batch = (await mcpToolCall('search_read', {
+          model: 'product.supplierinfo',
+          domain: [['product_tmpl_id', 'in', batchIds]],
+          fields: ['partner_id', 'product_tmpl_id', 'product_id', 'price', 'discount'],
+          limit: 2000,
+        })) as OdooSupplierInfo[]
 
-    if (!Array.isArray(batch) || batch.length === 0) break
+        if (!Array.isArray(batch)) {
+          console.warn(`  ⚠ Unexpected response for supplier info batch: ${JSON.stringify(batch).slice(0, 200)}`)
+          continue
+        }
 
-    for (const si of batch) {
-      const tmplId = Array.isArray(si.product_tmpl_id) ? si.product_tmpl_id[0] : null
-      if (tmplId) {
-        const existing = suppliersByTmpl.get(tmplId) ?? []
-        existing.push(si)
-        suppliersByTmpl.set(tmplId, existing)
+        for (const si of batch) {
+          const tmplId = Array.isArray(si.product_tmpl_id) ? si.product_tmpl_id[0] : null
+          if (tmplId) {
+            const existing = suppliersByTmpl.get(tmplId) ?? []
+            existing.push(si)
+            suppliersByTmpl.set(tmplId, existing)
+          }
+        }
+        console.log(`  Got ${batch.length} supplier records (total templates: ${suppliersByTmpl.size})`)
+      } catch (err) {
+        console.error(`  ✗ Failed to fetch supplier info batch:`, err)
       }
     }
+    if (suppliersByTmpl.size > 0) return suppliersByTmpl
+    console.warn('  ⚠ Targeted fetch returned 0 suppliers, falling back to full scan...')
+  }
 
-    console.log(`  Got ${batch.length} supplier records (total unique templates: ${suppliersByTmpl.size})`)
-    if (batch.length < limit) break
-    offset += limit
+  // Strategy 2: Full scan with pagination (fallback)
+  let offset = 0
+  const limit = 500 // Smaller batches for reliability
+
+  while (true) {
+    console.log(`  Fetching supplier info offset=${offset} (limit ${limit})...`)
+    try {
+      const batch = (await mcpToolCall('search_read', {
+        model: 'product.supplierinfo',
+        domain: [],
+        fields: ['partner_id', 'product_tmpl_id', 'product_id', 'price', 'discount'],
+        limit,
+        offset,
+      })) as OdooSupplierInfo[]
+
+      if (!Array.isArray(batch)) {
+        console.error(`  ✗ Non-array response at offset ${offset}: ${JSON.stringify(batch).slice(0, 300)}`)
+        break
+      }
+      if (batch.length === 0) break
+
+      for (const si of batch) {
+        const tmplId = Array.isArray(si.product_tmpl_id) ? si.product_tmpl_id[0] : null
+        if (tmplId) {
+          const existing = suppliersByTmpl.get(tmplId) ?? []
+          existing.push(si)
+          suppliersByTmpl.set(tmplId, existing)
+        }
+      }
+
+      console.log(`  Got ${batch.length} supplier records (total unique templates: ${suppliersByTmpl.size})`)
+      if (batch.length < limit) break
+      offset += limit
+    } catch (err) {
+      console.error(`  ✗ Supplier info fetch failed at offset ${offset}:`, err)
+      break
+    }
   }
 
   return suppliersByTmpl
@@ -262,9 +336,15 @@ async function seed() {
   const products = await fetchProducts(productIds)
   console.log(`   Products fetched: ${products.size}`)
 
-  // Step 5: Fetch supplier info
+  // Step 5: Collect template IDs and fetch supplier info
   console.log('\n4. Fetching supplier info...')
-  const suppliersByTmpl = await fetchSupplierInfo()
+  const templateIds = [...new Set(
+    [...products.values()]
+      .map((p) => Array.isArray(p.product_tmpl_id) ? p.product_tmpl_id[0] : null)
+      .filter((id): id is number => id !== null)
+  )]
+  console.log(`   Unique product templates: ${templateIds.length}`)
+  const suppliersByTmpl = await fetchSupplierInfo(templateIds)
   console.log(`   Supplier mappings: ${suppliersByTmpl.size} templates`)
 
   // Step 6: Build stock items

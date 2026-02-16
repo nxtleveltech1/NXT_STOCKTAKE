@@ -40,8 +40,8 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en" className={`${plusJakarta.variable} ${jetbrainsMono.variable}`}>
-        <body className="font-sans antialiased min-h-screen" suppressHydrationWarning>
+      <html lang="en" className={`${plusJakarta.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+        <body className="font-sans antialiased min-h-screen">
           <Providers>{children}</Providers>
         </body>
       </html>
