@@ -4,8 +4,6 @@ import { useOrganizationList } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
   Card,
   CardContent,
@@ -13,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Building2, Loader2, Mail, UserPlus } from "lucide-react"
+import { Building2, Loader2, Mail } from "lucide-react"
 import { toast } from "sonner"
 
 export default function SelectOrgPage() {
@@ -23,13 +21,10 @@ export default function SelectOrgPage() {
     setActive,
     userMemberships,
     userInvitations,
-    createOrganization,
   } = useOrganizationList({
     userMemberships: { infinite: true },
     userInvitations: { infinite: true },
   })
-  const [orgName, setOrgName] = useState("")
-  const [creating, setCreating] = useState(false)
   const [accepting, setAccepting] = useState<string | null>(null)
   const [rejecting, setRejecting] = useState<string | null>(null)
 
@@ -37,37 +32,6 @@ export default function SelectOrgPage() {
   const invitations = userInvitations?.data ?? []
   const hasOrgs = memberships.length > 0
   const hasInvitations = invitations.length > 0
-
-  const handleCreateOrg = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const name = orgName.trim()
-    if (!name) {
-      toast.error("Enter an organization name")
-      return
-    }
-    setCreating(true)
-    try {
-      const org = await createOrganization({ name })
-      await setActive({ organization: org.id })
-      toast.success("Organization created")
-      router.push("/")
-      router.refresh()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create organization")
-    } finally {
-      setCreating(false)
-    }
-  }
-
-  const handleSelectOrg = async (orgId: string) => {
-    try {
-      await setActive({ organization: orgId })
-      router.push("/")
-      router.refresh()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to switch")
-    }
-  }
 
   const handleAcceptInvitation = async (invitationId: string) => {
     setAccepting(invitationId)
@@ -99,15 +63,15 @@ export default function SelectOrgPage() {
 
   useEffect(() => {
     if (!isLoaded) return
-    if (hasOrgs && !hasInvitations && memberships.length === 1) {
+    if (hasOrgs) {
       setActive({ organization: memberships[0]!.organization.id }).then(() => {
         router.replace("/")
         router.refresh()
       })
     }
-  }, [isLoaded, hasOrgs, hasInvitations, memberships, setActive, router])
+  }, [isLoaded, hasOrgs, memberships, setActive, router])
 
-  if (!isLoaded) {
+  if (!isLoaded || (hasOrgs && !hasInvitations)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-muted/30">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -123,14 +87,14 @@ export default function SelectOrgPage() {
       </div>
 
       <div className="w-full max-w-md space-y-6">
-        {hasInvitations && (
+        {hasInvitations ? (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <Mail className="h-4 w-4" />
                 Pending invitations
               </CardTitle>
-              <CardDescription>Accept to join a team</CardDescription>
+              <CardDescription>Accept to join NXT STOCK</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {invitations.map((inv) => (
@@ -139,7 +103,7 @@ export default function SelectOrgPage() {
                   className="flex items-center justify-between rounded-lg border bg-card px-3 py-2"
                 >
                   <span className="text-sm font-medium">
-                    {inv.publicOrganizationData?.name ?? "Organization"}
+                    {inv.publicOrganizationData?.name ?? "NXT STOCK"}
                   </span>
                   <div className="flex gap-2">
                     <Button
@@ -170,65 +134,21 @@ export default function SelectOrgPage() {
               ))}
             </CardContent>
           </Card>
-        )}
-
-        {hasOrgs && (
+        ) : (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Your teams</CardTitle>
-              <CardDescription>Select a team to continue</CardDescription>
+              <CardTitle className="text-base">No team access</CardTitle>
+              <CardDescription>
+                Ask an NXT STOCK admin to invite you
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {memberships.map((mem) => (
-                <Button
-                  key={mem.id}
-                  variant="outline"
-                  className="w-full justify-start gap-2"
-                  onClick={() => handleSelectOrg(mem.organization.id)}
-                >
-                  <Building2 className="h-4 w-4" />
-                  {mem.organization.name}
-                  <span className="ml-auto text-xs text-muted-foreground">
-                    {mem.role}
-                  </span>
-                </Button>
-              ))}
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                You need an invitation to access NXT STOCK PULSE. Contact your team admin to get started.
+              </p>
             </CardContent>
           </Card>
         )}
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <UserPlus className="h-4 w-4" />
-              Create a team
-            </CardTitle>
-            <CardDescription>
-              Start a new organization for your stock take team
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreateOrg} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="org-name">Organization name</Label>
-                <Input
-                  id="org-name"
-                  placeholder="e.g. SoundStage AV"
-                  value={orgName}
-                  onChange={(e) => setOrgName(e.target.value)}
-                  disabled={creating}
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={creating}>
-                {creating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Create and continue"
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
       </div>
     </div>
   )

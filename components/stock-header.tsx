@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { OrganizationSwitcher, UserButton } from "@clerk/nextjs"
+import { UserButton } from "@clerk/nextjs"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -239,19 +239,6 @@ export function StockHeader({
           </DropdownMenu>
 
           <div className="hidden items-center gap-1 sm:flex">
-            <OrganizationSwitcher
-              hidePersonal
-              afterSelectOrganizationUrl="/"
-              afterCreateOrganizationUrl="/select-org"
-              afterLeaveOrganizationUrl="/select-org"
-              appearance={{
-                elements: {
-                  rootBox: "flex",
-                  organizationSwitcherTrigger:
-                    "border border-input bg-background rounded-md px-2 py-1.5 text-sm hover:bg-accent",
-                },
-              }}
-            />
             <ThemeToggle />
             <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
               <Link href="/settings/team" aria-label="Team settings">
@@ -337,18 +324,6 @@ export function StockHeader({
             </div>
             <div className="flex items-center justify-end gap-2 border-t pt-3">
               <ThemeToggle />
-              <OrganizationSwitcher
-                hidePersonal
-                afterSelectOrganizationUrl="/"
-                afterCreateOrganizationUrl="/select-org"
-                appearance={{
-                  elements: {
-                    rootBox: "flex",
-                    organizationSwitcherTrigger:
-                      "border border-input bg-background rounded-md px-2 py-1.5 text-sm",
-                  },
-                }}
-              />
               <UserButton afterSignOutUrl="/" />
             </div>
           </div>
