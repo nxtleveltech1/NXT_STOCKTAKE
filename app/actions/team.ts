@@ -28,7 +28,7 @@ export async function inviteTeamMember(formData: FormData) {
     await client.organizations.createOrganizationInvitation({
       organizationId: orgId,
       emailAddress: email,
-      role: role === "admin" ? ADMIN_ROLE : MEMBER_ROLE,
+      role: role === ADMIN_ROLE ? ADMIN_ROLE : MEMBER_ROLE,
     })
     revalidatePath("/settings/team")
     revalidatePath("/")
@@ -46,7 +46,7 @@ export async function updateMemberRole(userId: string, role: OrgRole) {
   if (!orgId) throw new Error("Unauthorized")
   assertAdmin(orgRole)
 
-  const normalizedRole = role === "admin" ? ADMIN_ROLE : MEMBER_ROLE
+  const normalizedRole = role === ADMIN_ROLE ? ADMIN_ROLE : MEMBER_ROLE
   try {
     const client = await clerkClient()
     await client.organizations.updateOrganizationMembership({

@@ -21,7 +21,15 @@ bun run seed
 
 Seeds 12,000 stock items from `odoo_soh_full_20260206_124339.xlsx`. Re-run to truncate and re-seed.
 
-## 4. Run
+## 4. Invite team members
+
+```bash
+bun run invite:team
+```
+
+Adds Clerk users to the NXT Level Tech org. Uses `createOrganizationMembership` for existing users, `createOrganizationInvitation` for others. Optional: set `CLERK_ORG_ID` in `.env.local` to target a specific org.
+
+## 5. Run
 
 ```bash
 bun install

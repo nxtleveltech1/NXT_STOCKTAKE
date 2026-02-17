@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "seed": "bun run scripts/seed-from-excel.ts",
     "seed:odoo": "bun run scripts/seed-from-odoo.ts",
+    "invite:team": "bun run scripts/invite-team-members.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
