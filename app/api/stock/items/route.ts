@@ -42,6 +42,12 @@ export async function GET(request: Request) {
       { name: { contains: s, mode: 'insensitive' } },
     ]
     if (s.length >= 2) {
+      // Exact barcode match first when search looks like a barcode (scans are often exact)
+      const isBarcodeLike =
+        (/^\d{8,13}$/.test(s) || (s.length >= 4 && s.length <= 80 && /^[\dA-Za-z\-]+$/.test(s)))
+      if (isBarcodeLike) {
+        orConditions.unshift({ barcode: { equals: s } })
+      }
       orConditions.push(
         { barcode: { contains: s, mode: 'insensitive' } },
         { category: { contains: s, mode: 'insensitive' } },
@@ -75,6 +81,7 @@ export async function GET(request: Request) {
     verified: statusCounts.find((s) => s.status === 'verified')?._count.id ?? 0,
   }
 
+  const searchTrimmed = search?.trim()
   const mapped = items.map((r) => ({
     id: r.id,
     odooId: r.odooId,
@@ -104,7 +111,18 @@ export async function GET(request: Request) {
     supplierId: r.supplierId ?? null,
     listPrice: r.listPrice ?? null,
     costPrice: r.costPrice ?? null,
+    exactBarcodeMatch:
+      !!searchTrimmed && (r.barcode?.trim() ?? '').toLowerCase() === searchTrimmed.toLowerCase(),
   }))
+
+  // Sort exact barcode matches first
+  if (searchTrimmed) {
+    mapped.sort((a, b) => {
+      const aExact = (a as { exactBarcodeMatch?: boolean }).exactBarcodeMatch ? 0 : 1
+      const bExact = (b as { exactBarcodeMatch?: boolean }).exactBarcodeMatch ? 0 : 1
+      return aExact - bExact
+    })
+  }
 
   return NextResponse.json({ items: mapped, total, filteredTotal: total, summary })
 }

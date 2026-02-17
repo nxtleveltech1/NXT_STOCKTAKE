@@ -22,6 +22,8 @@ export type StockItem = {
   supplierId: number | null
   listPrice: number | null
   costPrice: number | null
+  /** True when search matched this item's barcode exactly (API response only) */
+  exactBarcodeMatch?: boolean
 }
 
 export type StockSummary = {

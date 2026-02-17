@@ -25,6 +25,7 @@ import {
   ChevronRight,
   MapPin,
 } from "lucide-react"
+import { toast } from "sonner"
 
 export function QuickCount({
   items,
@@ -150,13 +151,9 @@ export function QuickCount({
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [selectedItem, handleSubmitCount, onSearchChange])
 
-  // Auto-select when scan/search returns exactly one match
-  useEffect(() => {
-    if (showScanner && items.length === 1 && !selectedItem && search) {
-      setCapturedBarcode(search.trim())
-      handleSelectItem(items[0], true)
-    }
-  }, [showScanner, items, selectedItem, search, handleSelectItem])
+  // Single match from scan: require tap-to-confirm (no auto-select)
+  const pendingConfirm =
+    showScanner && items.length === 1 && !selectedItem && search?.trim()
 
   return (
     <div className="flex flex-col rounded-xl border bg-card">
@@ -206,6 +203,7 @@ export function QuickCount({
               onSearchChange(value.trim())
               setTimeout(() => searchRef.current?.focus(), 50)
             }}
+            onInvalidBarcode={(_, error) => toast.error(`Invalid barcode: ${error}`)}
             onError={(msg) => {
               if (msg && !msg.includes("No barcode found")) {
                 console.warn("Barcode scan error:", msg)
@@ -253,7 +251,38 @@ export function QuickCount({
 
         {/* Results in absolute overlay - no layout shift so keyboard stays open on mobile */}
         <div className="absolute left-4 right-4 top-full z-50 mt-1">
-          {search && items.length > 0 && !isLoading && (
+          {pendingConfirm && (
+            <div className="rounded-lg border bg-popover p-3 shadow-lg">
+              <p className="text-xs text-muted-foreground">
+                Scanned: <span className="font-mono text-foreground">{search.trim()}</span>
+              </p>
+              <p className="mt-1 text-sm font-medium text-foreground">
+                Match: {items[0]!.name}
+              </p>
+              <div className="mt-2 flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 text-xs"
+                  onClick={() => onSearchChange("")}
+                >
+                  Scan again
+                </Button>
+                <Button
+                  size="sm"
+                  className="flex-1 gap-1.5 text-xs"
+                  onClick={() => {
+                    setCapturedBarcode(search.trim())
+                    handleSelectItem(items[0]!, true)
+                  }}
+                >
+                  <Check className="h-3.5 w-3.5" />
+                  Confirm
+                </Button>
+              </div>
+            </div>
+          )}
+          {search && items.length > 0 && !isLoading && !pendingConfirm && (
           <div className="max-h-48 overflow-y-auto rounded-lg border bg-popover shadow-lg scrollbar-thin">
             {items.slice(0, 8).map((item) => (
               <button
@@ -271,6 +300,11 @@ export function QuickCount({
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
+                  {item.exactBarcodeMatch && (
+                    <Badge variant="secondary" className="text-[10px]">
+                      Exact match
+                    </Badge>
+                  )}
                   <Badge
                     variant="outline"
                     className={`text-xs ${
@@ -388,12 +422,20 @@ export function QuickCount({
               <BarcodeScanner
                 active={scanToCountActive}
                 onScan={(value) => {
+                  const expected = selectedItem.barcode?.trim()
+                  if (expected && value.trim() !== expected) {
+                    toast.error(
+                      "Scanned barcode doesn't match selected item. Rescan or change item."
+                    )
+                    return
+                  }
                   setCapturedBarcode((prev) => prev ?? value)
                   setCountValue((prev) => {
                     const current = parseInt(prev, 10) || 0
                     return (current + 1).toString()
                   })
                 }}
+                onInvalidBarcode={(_, error) => toast.error(`Invalid barcode: ${error}`)}
                 onError={(msg) => {
                   if (msg && !msg.includes("No barcode found")) {
                     console.warn("Barcode scan error:", msg)

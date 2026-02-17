@@ -38,6 +38,7 @@ model StockItem {
   @@index([status])
   @@index([supplier])
   @@index([sku])
+  @@index([barcode])
 }
 
 model StockSession {

@@ -34,6 +34,7 @@ import { BarcodeScanner } from "@/components/barcode-scanner"
 import type { StockItem } from "@/lib/stock-store"
 import { updateStockItem, type UpdateStockItemInput } from "@/lib/stock-api"
 import { Check, Minus, Plus, Package, ScanBarcode } from "lucide-react"
+import { toast } from "sonner"
 
 const schema = z.object({
   sku: z.string().min(1, "SKU is required"),
@@ -220,6 +221,9 @@ export function ProductProfileSheet({
                         onScan={(value) => {
                           field.onChange(value)
                           setShowBarcodeScanner(false)
+                        }}
+                        onInvalidBarcode={(_, error) => {
+                          toast.error(`Invalid barcode: ${error}`)
                         }}
                         onError={(msg) => {
                           if (msg && !msg.includes("No barcode found")) {
