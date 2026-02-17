@@ -59,7 +59,9 @@ const emptySummary: StockSummary = { total: 0, pending: 0, counted: 0, variance:
 
 export default function StockTakeDashboard() {
   const queryClient = useQueryClient()
-  const { memberships } = useOrganization({ memberships: { infinite: true } })
+  const { memberships } = useOrganization({
+    memberships: { infinite: true, pageSize: 100 },
+  })
   const teamMembers: TeamMember[] = useMemo(
     () => (memberships?.data?.length ? mapOrgMembersToTeam(memberships.data) : []),
     [memberships?.data]
