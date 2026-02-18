@@ -218,12 +218,16 @@ export function StockHeader({
         {/* Center: Timer (desktop) */}
         <div className="hidden items-center gap-3 lg:flex">
           <Clock className="h-4 w-4 text-muted-foreground" />
-          <ElapsedTime
-            status={session.status}
-            startedAt={session.startedAt}
-            pausedAt={session.pausedAt ?? null}
-            totalPausedSeconds={session.totalPausedSeconds ?? 0}
-          />
+          {(session.isDefault || session.id === "default") ? (
+            <span className="font-mono text-sm text-muted-foreground">—</span>
+          ) : (
+            <ElapsedTime
+              status={session.status}
+              startedAt={session.startedAt}
+              pausedAt={session.pausedAt ?? null}
+              totalPausedSeconds={session.totalPausedSeconds ?? 0}
+            />
+          )}
           <div className="h-4 w-px bg-border" />
           <OnlinePopover count={session.teamMembers} members={onlineMembers} />
           <div className="h-4 w-px bg-border" />
@@ -236,17 +240,21 @@ export function StockHeader({
         {/* Mobile timer */}
         <div className="flex items-center gap-2 lg:hidden">
           <LivePulse />
-          <ElapsedTime
-            status={session.status}
-            startedAt={session.startedAt}
-            pausedAt={session.pausedAt ?? null}
-            totalPausedSeconds={session.totalPausedSeconds ?? 0}
-          />
+          {(session.isDefault || session.id === "default") ? (
+            <span className="font-mono text-sm text-muted-foreground">—</span>
+          ) : (
+            <ElapsedTime
+              status={session.status}
+              startedAt={session.startedAt}
+              pausedAt={session.pausedAt ?? null}
+              totalPausedSeconds={session.totalPausedSeconds ?? 0}
+            />
+          )}
         </div>
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2">
-          {session.status !== "completed" && (
+          {!session.isDefault && session.id !== "default" && session.status !== "completed" && (
             <Button
               variant="outline"
               size="sm"
@@ -378,7 +386,7 @@ export function StockHeader({
             </div>
             <div className="flex flex-col gap-2">
               <div className="flex gap-2">
-                {(session.id === "default" || session.status === "completed") && onStartSession && (
+                {(session.isDefault || session.id === "default" || session.status === "completed") && onStartSession && (
                   <Button
                     variant="default"
                     size="sm"
@@ -389,7 +397,7 @@ export function StockHeader({
                     Start Session
                   </Button>
                 )}
-                {session.status !== "completed" && (
+                {!session.isDefault && session.id !== "default" && session.status !== "completed" && (
                   <Button
                     variant="outline"
                     size="sm"

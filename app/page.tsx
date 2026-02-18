@@ -132,6 +132,7 @@ export default function StockTakeDashboard() {
   const { data: session } = useQuery({
     queryKey: ["stock", "session"],
     queryFn: fetchStockSession,
+    refetchInterval: 5_000,
   })
 
   const { data: locations = ["All Zones"] } = useQuery({
@@ -267,6 +268,10 @@ export default function StockTakeDashboard() {
 
   const handleToggleSession = useCallback(() => {
     if (!session) return
+    if (session.isDefault || session.id === "default") {
+      toast.error("Start a session first to use Pause/Resume")
+      return
+    }
     const nextStatus =
       session.status === "live" ? "paused" : session.status === "paused" ? "live" : "live"
     sessionToggleMutation.mutate(nextStatus)

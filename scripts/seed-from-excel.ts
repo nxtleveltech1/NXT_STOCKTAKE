@@ -5,28 +5,27 @@ config({ path: resolve(process.cwd(), '.env.local'), override: true })
 import * as XLSX from 'xlsx'
 import { PrismaClient } from '@prisma/client'
 import { PrismaNeon } from '@prisma/adapter-neon'
+import { NXT_STOCK_ORG_ID } from '@/lib/org'
 
 const connectionString = process.env.DATABASE_URL
 if (!connectionString) throw new Error('DATABASE_URL required')
 const adapter = new PrismaNeon({ connectionString })
 const db = new PrismaClient({ adapter })
 
-const EXCEL_PATH = 'odoo_soh_full_20260215_095441.xlsx'
+const EXCEL_PATH = process.argv[2] ?? 'nxt_stock_soh_full_20260218_092824.xlsx'
 
 async function seed() {
   const wb = XLSX.readFile(EXCEL_PATH)
-  const ws = wb.Sheets[wb.SheetNames[0]!]!
+  const sheetName = wb.SheetNames.find((s) => s.includes('SOH') || s.includes('Full')) ?? wb.SheetNames[0]!
+  const ws = wb.Sheets[sheetName]!
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, {
     defval: '',
     raw: false,
   })
 
   // Excel columns: ID, Product, Internal Ref, UoM, Serial Number, Barcode, Location, Warehouse, Quantity, Reserved, Available, Owner
-  const headers = ['ID', 'Product', 'Internal Ref', 'UoM', 'Serial Number', 'Barcode', 'Location', 'Warehouse', 'Quantity', 'Reserved', 'Available', 'Owner']
-
   const BATCH_SIZE = 500
-  const orgId = process.env.CLERK_ORG_ID ?? null
-  if (!orgId) console.warn('CLERK_ORG_ID not set – items will have null organizationId')
+  const orgId = NXT_STOCK_ORG_ID
 
   const existing = await db.stockItem.count()
   if (existing > 0) {
@@ -71,9 +70,12 @@ async function seed() {
 
   const total = await db.stockItem.count()
 
-  // Create default session
-  const sessions = await db.stockSession.findMany()
-  if (sessions.length === 0) {
+  // Create or reset session for fresh stock take
+  const session = await db.stockSession.findFirst({
+    where: { organizationId: orgId },
+    orderBy: { startedAt: 'desc' },
+  })
+  if (!session) {
     await db.stockSession.create({
       data: {
         organizationId: orgId,
@@ -88,8 +90,22 @@ async function seed() {
       },
     })
   } else {
-    await db.stockSession.updateMany({ where: {}, data: { totalItems: total } })
+    await db.stockSession.update({
+      where: { id: session.id },
+      data: {
+        totalItems: total,
+        countedItems: 0,
+        varianceItems: 0,
+        verifiedItems: 0,
+        status: 'live',
+        pausedAt: null,
+        totalPausedSeconds: 0,
+      },
+    })
   }
+
+  // Clear activity for fresh stock take
+  await db.stockActivity.deleteMany({ where: { organizationId: orgId } })
 
   console.log(`\nDone. ${total} StockItems seeded.`)
   process.exit(0)

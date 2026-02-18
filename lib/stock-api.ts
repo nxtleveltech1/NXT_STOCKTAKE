@@ -47,6 +47,8 @@ export type StockSession = {
   varianceItems: number
   verifiedItems: number
   teamMembers: number
+  /** True when no DB session exists (synthetic default); Pause/Resume disabled */
+  isDefault?: boolean
 }
 
 export type StockItemsResponse = {

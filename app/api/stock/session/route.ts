@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
+import { NXT_STOCK_ORG_ID } from '@/lib/org'
 
 function toSessionJson(session: {
   id: string
@@ -33,10 +34,9 @@ function toSessionJson(session: {
 }
 
 export async function GET() {
-  const { orgId } = await auth()
   const session = await db.stockSession.findFirst({
     orderBy: { startedAt: 'desc' },
-    where: orgId ? { organizationId: orgId } : undefined,
+    where: { organizationId: NXT_STOCK_ORG_ID },
   })
   if (!session) {
     const total = await db.stockItem.count()
@@ -58,6 +58,7 @@ export async function GET() {
       varianceItems: variance,
       verifiedItems: verified,
       teamMembers: 0,
+      isDefault: true,
     })
   }
 
@@ -67,16 +68,19 @@ export async function GET() {
     db.stockItem.count({ where: { status: 'verified' } }),
   ])
 
-  return NextResponse.json(toSessionJson(
-    { ...session, totalPausedSeconds: session.totalPausedSeconds ?? 0 },
-    counted,
-    variance,
-    verified,
-  ))
+  return NextResponse.json({
+    ...toSessionJson(
+      { ...session, totalPausedSeconds: session.totalPausedSeconds ?? 0 },
+      counted,
+      variance,
+      verified,
+    ),
+    isDefault: false,
+  })
 }
 
 export async function POST(request: Request) {
-  const { userId, orgId } = await auth()
+  const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json().catch(() => ({}))
@@ -85,7 +89,7 @@ export async function POST(request: Request) {
   const total = await db.stockItem.count()
   const session = await db.stockSession.create({
     data: {
-      organizationId: orgId ?? null,
+      organizationId: NXT_STOCK_ORG_ID,
       name,
       status: 'live',
       location: 'NXT Stock',
@@ -99,21 +103,24 @@ export async function POST(request: Request) {
     db.stockItem.count({ where: { status: 'verified' } }),
   ])
 
-  return NextResponse.json(toSessionJson(
-    { ...session, totalPausedSeconds: session.totalPausedSeconds ?? 0 },
-    counted,
-    variance,
-    verified,
-  ))
+  return NextResponse.json({
+    ...toSessionJson(
+      { ...session, totalPausedSeconds: session.totalPausedSeconds ?? 0 },
+      counted,
+      variance,
+      verified,
+    ),
+    isDefault: false,
+  })
 }
 
 export async function PATCH(request: Request) {
-  const { userId, orgId } = await auth()
+  const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const session = await db.stockSession.findFirst({
     orderBy: { startedAt: 'desc' },
-    where: orgId ? { organizationId: orgId } : undefined,
+    where: { organizationId: NXT_STOCK_ORG_ID },
   })
   if (!session) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -149,10 +156,13 @@ export async function PATCH(request: Request) {
     db.stockItem.count({ where: { status: 'verified' } }),
   ])
 
-  return NextResponse.json(toSessionJson(
-    { ...updated, totalPausedSeconds: updated.totalPausedSeconds ?? 0 },
-    counted,
-    variance,
-    verified,
-  ))
+  return NextResponse.json({
+    ...toSessionJson(
+      { ...updated, totalPausedSeconds: updated.totalPausedSeconds ?? 0 },
+      counted,
+      variance,
+      verified,
+    ),
+    isDefault: false,
+  })
 }
