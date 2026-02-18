@@ -178,6 +178,8 @@ export type StockTableProps = {
   warehouses: string[]
   suppliers: string[]
   onSelectItem: (item: StockItem) => void
+  onVerify?: (item: StockItem) => void
+  sessionStatus?: "live" | "paused" | "completed"
   onRefresh: () => void
   isLoading?: boolean
   itemsPerPage: number
@@ -215,6 +217,8 @@ export function StockTable({
   warehouses,
   suppliers,
   onSelectItem,
+  onVerify,
+  sessionStatus = "live",
   onRefresh,
   isLoading,
   itemsPerPage,
@@ -571,6 +575,7 @@ export function StockTable({
         </div>
 
         {/* Desktop table */}
+        <TooltipProvider delayDuration={200}>
         <div className="hidden overflow-x-auto lg:block">
           <Table>
             <TableHeader>
@@ -616,7 +621,12 @@ export function StockTable({
                         key={col.key}
                         className={col.align === "right" ? "text-right" : ""}
                       >
-                        <CellRenderer item={item} columnKey={col.key} />
+                        <CellRenderer
+                          item={item}
+                          columnKey={col.key}
+                          onVerify={onVerify}
+                          sessionStatus={sessionStatus}
+                        />
                       </TableCell>
                     ))}
                   </TableRow>
@@ -625,6 +635,7 @@ export function StockTable({
             </TableBody>
           </Table>
         </div>
+        </TooltipProvider>
 
         {/* Mobile card view */}
         <div className="flex flex-col lg:hidden">
@@ -749,7 +760,17 @@ function getCellValue(item: StockItem, key: ColumnKey): string | number | null {
   }
 }
 
-function CellRenderer({ item, columnKey }: { item: StockItem; columnKey: ColumnKey }) {
+function CellRenderer({
+  item,
+  columnKey,
+  onVerify,
+  sessionStatus = "live",
+}: {
+  item: StockItem
+  columnKey: ColumnKey
+  onVerify?: (item: StockItem) => void
+  sessionStatus?: "live" | "paused" | "completed"
+}) {
   switch (columnKey) {
     case "sku":
       return <span className="font-mono text-xs text-muted-foreground">{item.sku}</span>
@@ -788,11 +809,32 @@ function CellRenderer({ item, columnKey }: { item: StockItem; columnKey: ColumnK
     case "status": {
       const sc = statusConfig[item.status]
       const StatusIcon = sc.icon
+      const canVerify = item.status === "variance" && onVerify && sessionStatus === "live"
       return (
-        <Badge variant="outline" className={`gap-1 text-xs ${sc.className}`}>
-          <StatusIcon className="h-3 w-3" />
-          {sc.label}
-        </Badge>
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <Badge variant="outline" className={`gap-1 text-xs ${sc.className}`}>
+            <StatusIcon className="h-3 w-3" />
+            {sc.label}
+          </Badge>
+          {canVerify && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onVerify(item)
+                  }}
+                >
+                  <ShieldCheck className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Verify</TooltipContent>
+            </Tooltip>
+          )}
+        </div>
       )
     }
     case "lastCountedBy":

@@ -2,6 +2,29 @@ import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
 
+async function createJoinActivity(
+  orgId: string | null,
+  userId: string,
+  userName: string,
+  zoneCode: string
+) {
+  const session = await db.stockSession.findFirst({
+    orderBy: { startedAt: 'desc' },
+    where: orgId ? { organizationId: orgId } : { organizationId: null },
+  })
+  await db.stockActivity.create({
+    data: {
+      organizationId: orgId ?? undefined,
+      sessionId: session?.id ?? undefined,
+      type: 'join',
+      message: `joined zone ${zoneCode}`,
+      userId,
+      userName,
+      zone: zoneCode,
+    },
+  })
+}
+
 export async function GET() {
   const { orgId } = await auth()
   const assignments = await db.zoneAssignment.findMany({
@@ -25,6 +48,8 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
   }
 
+  const clerkClient = (await import('@clerk/nextjs/server')).clerkClient
+
   for (const { zoneCode, userId: assigneeId } of assignments) {
     if (!zoneCode || typeof zoneCode !== 'string') continue
     const targetUserId = typeof assigneeId === 'string' && assigneeId ? assigneeId : null
@@ -38,10 +63,17 @@ export async function PATCH(request: Request) {
 
     if (targetUserId) {
       if (existing) {
-        await db.zoneAssignment.update({
-          where: { id: existing.id },
-          data: { userId: targetUserId },
-        })
+        if (existing.userId !== targetUserId) {
+          await db.zoneAssignment.update({
+            where: { id: existing.id },
+            data: { userId: targetUserId },
+          })
+          const assignee = await clerkClient.users.getUser(targetUserId).catch(() => null)
+          const assigneeName = assignee
+            ? [assignee.firstName, assignee.lastName].filter(Boolean).join(' ').trim() || `User ${targetUserId.slice(-6)}`
+            : `User ${targetUserId.slice(-6)}`
+          await createJoinActivity(orgId, targetUserId, assigneeName, zoneCode)
+        }
       } else {
         await db.zoneAssignment.create({
           data: {
@@ -50,6 +82,11 @@ export async function PATCH(request: Request) {
             userId: targetUserId,
           },
         })
+        const assignee = await clerkClient.users.getUser(targetUserId).catch(() => null)
+        const assigneeName = assignee
+          ? [assignee.firstName, assignee.lastName].filter(Boolean).join(' ').trim() || `User ${targetUserId.slice(-6)}`
+          : `User ${targetUserId.slice(-6)}`
+        await createJoinActivity(orgId, targetUserId, assigneeName, zoneCode)
       }
     } else if (existing) {
       await db.zoneAssignment.delete({ where: { id: existing.id } })

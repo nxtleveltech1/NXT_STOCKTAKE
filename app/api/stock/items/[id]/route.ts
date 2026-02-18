@@ -15,6 +15,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { userId, orgId } = await auth()
+  if (!orgId) return NextResponse.json({ error: 'Organization required' }, { status: 403 })
+
   const user = await currentUser()
   const userName = user
     ? displayName(user.firstName, user.lastName, user.id)
@@ -24,8 +26,12 @@ export async function PATCH(
   const body = await _request.json()
   const countedQty =
     typeof body.countedQty === 'number' ? body.countedQty : null
+  const verified = body.verified === true
   const item = await db.stockItem.findUnique({ where: { id } })
   if (!item) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (item.organizationId != null && item.organizationId !== orgId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const updateData: Parameters<typeof db.stockItem.update>[0]['data'] = {}
 
@@ -43,7 +49,7 @@ export async function PATCH(
     const inDb =
       !inCanonical &&
       (await db.stockItem.findFirst({
-        where: { location: loc },
+        where: { organizationId: orgId, location: loc },
         select: { id: true },
       }))
     if (inCanonical || inDb) updateData.location = loc
@@ -59,11 +65,47 @@ export async function PATCH(
   if (typeof body.supplier === 'string')
     updateData.supplier = body.supplier.trim() || null
 
-  if (Object.keys(updateData).length === 0 && countedQty === null)
+  if (Object.keys(updateData).length === 0 && countedQty === null && !verified)
     return NextResponse.json(
-      { error: 'At least one field (countedQty, sku, name, etc.) required' },
+      { error: 'At least one field (countedQty, verified, sku, name, etc.) required' },
       { status: 400 }
     )
+
+  if (verified) {
+    if (item.status !== 'variance') {
+      return NextResponse.json(
+        { error: 'Only variance items can be verified' },
+        { status: 400 }
+      )
+    }
+    const session = await db.stockSession.findFirst({
+      orderBy: { startedAt: 'desc' },
+      where: { organizationId: orgId },
+    })
+    if (session && (session.status === 'completed' || session.status === 'paused')) {
+      return NextResponse.json(
+        { error: 'Verifying is disabled when session is paused or completed' },
+        { status: 403 }
+      )
+    }
+    updateData.status = 'verified'
+    const activitySession = await db.stockSession.findFirst({
+      orderBy: { startedAt: 'desc' },
+      where: { organizationId: orgId },
+    })
+    await db.stockActivity.create({
+      data: {
+        organizationId: orgId,
+        sessionId: activitySession?.id ?? undefined,
+        type: 'verify',
+        message: `verified variance on ${item.name}`,
+        userId: userId ?? undefined,
+        userName,
+        zone: item.location || undefined,
+        itemId: id,
+      },
+    })
+  }
 
   if (countedQty !== null) {
     const session = await db.stockSession.findFirst({
@@ -112,6 +154,49 @@ export async function PATCH(
     where: { id },
     data: updateData,
   })
+
+  // zone_complete: when a zone reaches 100% counted
+  if (updated.location && (countedQty !== null || verified)) {
+    const [total, counted] = await Promise.all([
+      db.stockItem.count({
+        where: { organizationId: orgId, location: updated.location },
+      }),
+      db.stockItem.count({
+        where: {
+          organizationId: orgId,
+          location: updated.location,
+          status: { in: ['counted', 'variance', 'verified'] },
+        },
+      }),
+    ])
+    if (total > 0 && counted >= total) {
+      const activitySession = await db.stockSession.findFirst({
+        orderBy: { startedAt: 'desc' },
+        where: { organizationId: orgId },
+      })
+      const existing = await db.stockActivity.findFirst({
+        where: {
+          organizationId: orgId,
+          sessionId: activitySession?.id ?? undefined,
+          type: 'zone_complete',
+          zone: updated.location,
+        },
+      })
+      if (!existing) {
+        await db.stockActivity.create({
+          data: {
+            organizationId: orgId ?? undefined,
+            sessionId: activitySession?.id ?? undefined,
+            type: 'zone_complete',
+            message: `completed zone ${updated.location}`,
+            userId: userId ?? undefined,
+            userName,
+            zone: updated.location,
+          },
+        })
+      }
+    }
+  }
 
   return NextResponse.json({
     id: updated.id,

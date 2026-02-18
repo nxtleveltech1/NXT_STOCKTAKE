@@ -5,14 +5,17 @@ import { ALLOWED_LOCATIONS } from '@/lib/locations'
 
 export async function GET() {
   const { orgId } = await auth()
+  if (!orgId) return NextResponse.json({ error: 'Organization required' }, { status: 403 })
+
   const assignments = await db.zoneAssignment.findMany({
-    where: orgId ? { organizationId: orgId } : { organizationId: null },
+    where: { organizationId: orgId },
   })
   const assigneeByZone = new Map(assignments.map((a) => [a.zoneCode, a.userId]))
 
+  const itemWhere = { organizationId: orgId, location: { not: '' } }
   const grouped = await db.stockItem.groupBy({
     by: ['location'],
-    where: { location: { not: '' } },
+    where: itemWhere,
     _count: { id: true },
     _sum: { expectedQty: true },
   })
@@ -32,12 +35,13 @@ export async function GET() {
       const [counted, variances] = await Promise.all([
         db.stockItem.count({
           where: {
+            ...itemWhere,
             location: loc,
             status: { in: ['counted', 'variance', 'verified'] },
           },
         }),
         db.stockItem.count({
-          where: { location: loc, status: 'variance' },
+          where: { ...itemWhere, location: loc, status: 'variance' },
         }),
       ])
 

@@ -8,6 +8,7 @@ datasource db {
 
 model StockItem {
   id             String    @id @default(cuid())
+  organizationId String?   // Clerk org id – NXT STOCK
   odooId         Int       @unique
   odooProductId  Int?      // product.product id in Odoo
   sku            String
@@ -34,6 +35,7 @@ model StockItem {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  @@index([organizationId])
   @@index([location])
   @@index([status])
   @@index([supplier])

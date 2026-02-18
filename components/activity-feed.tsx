@@ -51,7 +51,14 @@ export function ActivityFeed({ events }: { events: ActivityEvent[] }) {
         ref={feedRef}
         className="flex max-h-[400px] flex-col overflow-y-auto scrollbar-thin lg:max-h-[560px]"
       >
-        {events.map((event) => {
+        {events.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 px-4 py-12 text-center text-sm text-muted-foreground">
+            <Activity className="h-10 w-10 opacity-30" />
+            <p>No activity yet</p>
+            <p className="text-xs">Counts and verifications will appear here</p>
+          </div>
+        ) : (
+        events.map((event) => {
           const Icon = eventIcons[event.type] ?? CheckCircle2
           const color = eventColors[event.type] ?? "text-muted-foreground"
           return (
@@ -83,7 +90,8 @@ export function ActivityFeed({ events }: { events: ActivityEvent[] }) {
               </div>
             </div>
           )
-        })}
+        })
+        )}
       </div>
     </div>
   )

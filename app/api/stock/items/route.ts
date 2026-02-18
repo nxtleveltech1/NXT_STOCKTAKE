@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
 
 export async function GET(request: Request) {
+  const { orgId } = await auth()
+  if (!orgId) return NextResponse.json({ error: 'Organization required' }, { status: 403 })
+
   const { searchParams } = new URL(request.url)
   const location = searchParams.get('location')
   const status = searchParams.get('status')
@@ -15,7 +19,7 @@ export async function GET(request: Request) {
   const skip = (page - 1) * limit
 
   type WhereInput = NonNullable<Parameters<typeof db.stockItem.findMany>[0]>['where']
-  const where: WhereInput = {}
+  const where: WhereInput = { organizationId: orgId }
 
   if (location && location !== 'All Zones') {
     where.location = location

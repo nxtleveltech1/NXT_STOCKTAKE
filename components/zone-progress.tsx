@@ -32,7 +32,14 @@ export function ZoneProgress({
       </div>
 
       <div className="flex flex-col divide-y">
-        {zones.map((zone, i) => {
+        {zones.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 px-4 py-12 text-center text-sm text-muted-foreground">
+            <MapPin className="h-10 w-10 opacity-30" />
+            <p>No zones yet</p>
+            <p className="text-xs">Assign zones to see progress</p>
+          </div>
+        ) : (
+        zones.map((zone, i) => {
           const pct = zone.totalItems > 0
             ? Math.round((zone.countedItems / zone.totalItems) * 100)
             : 0
@@ -76,7 +83,8 @@ export function ZoneProgress({
               </div>
             </div>
           )
-        })}
+        })
+        )}
       </div>
     </div>
   )

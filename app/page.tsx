@@ -35,12 +35,14 @@ import {
   patchZoneAssignments,
   fetchLocations,
   fetchZones,
+  fetchTeamStats,
   fetchActivity,
   fetchUoms,
   fetchCategories,
   fetchWarehouses,
   fetchSuppliers,
   updateItemCount,
+  verifyStockItem,
 } from "@/lib/stock-api"
 import type { StockItem, TeamMember } from "@/lib/stock-store"
 import type { StockSummary } from "@/lib/stock-api"
@@ -82,10 +84,24 @@ export default function StockTakeDashboard() {
   const { memberships } = useOrganization({
     memberships: { infinite: true, pageSize: 100 },
   })
-  const teamMembers: TeamMember[] = useMemo(
-    () => (memberships?.data?.length ? mapOrgMembersToTeam(memberships.data) : []),
-    [memberships?.data]
-  )
+  const { data: teamStats = [] } = useQuery({
+    queryKey: ["stock", "team-stats"],
+    queryFn: fetchTeamStats,
+    refetchInterval: 15_000,
+  })
+  const teamMembers: TeamMember[] = useMemo(() => {
+    const base = memberships?.data?.length ? mapOrgMembersToTeam(memberships.data) : []
+    const statsByUser = new Map(teamStats.map((s) => [s.userId, s]))
+    return base.map((m) => {
+      const s = statsByUser.get(m.id)
+      return {
+        ...m,
+        zone: s?.zoneCode ?? m.zone,
+        itemsCounted: s?.itemsCounted ?? m.itemsCounted,
+        lastActive: s?.lastActive ?? m.lastActive,
+      }
+    })
+  }, [memberships?.data, teamStats])
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -214,6 +230,19 @@ export default function StockTakeDashboard() {
     },
   })
 
+  const verifyMutation = useMutation({
+    mutationFn: (id: string) => verifyStockItem(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["stock"] })
+      setProfileOpen(false)
+      setProfileItem(null)
+      toast.success("Item verified")
+    },
+    onError: (e: Error) => {
+      toast.error(e.message ?? "Failed to verify")
+    },
+  })
+
   const sessionToggleMutation = useMutation({
     mutationFn: (status: "live" | "paused" | "completed") =>
       patchStockSession(status),
@@ -279,6 +308,11 @@ export default function StockTakeDashboard() {
     toast.success("Report opened in new tab")
   }, [])
 
+  const handleGenerateReportPdf = useCallback(() => {
+    window.open("/api/stock/report?format=pdf", "_blank", "noopener,noreferrer")
+    toast.success("PDF report opened in new tab")
+  }, [])
+
   const handleAssignZones = useCallback(() => {
     setAssignZonesOpen(true)
   }, [])
@@ -301,6 +335,8 @@ export default function StockTakeDashboard() {
     async (assignments: Array<{ zoneCode: string; userId: string }>) => {
       await patchZoneAssignments(assignments)
       queryClient.invalidateQueries({ queryKey: ["stock", "zones"] })
+      queryClient.invalidateQueries({ queryKey: ["stock", "team-stats"] })
+      queryClient.invalidateQueries({ queryKey: ["stock", "activity"] })
       toast.success("Zone assignments saved")
     },
     [queryClient]
@@ -351,6 +387,8 @@ export default function StockTakeDashboard() {
     warehouses,
     suppliers,
     onSelectItem: handleSelectItem,
+    onVerify: (item) => verifyMutation.mutate(item.id),
+    sessionStatus: session?.status,
     onRefresh: handleRefresh,
     isLoading: itemsLoading,
     itemsPerPage,
@@ -366,6 +404,7 @@ export default function StockTakeDashboard() {
             onToggleSession={handleToggleSession}
             onExportProgress={handleExportProgress}
             onGenerateReport={handleGenerateReport}
+            onGenerateReportPdf={handleGenerateReportPdf}
             onAssignZones={handleAssignZones}
             onEndSession={handleEndSession}
             onStartSession={handleStartSession}
@@ -402,6 +441,7 @@ export default function StockTakeDashboard() {
         suppliers={suppliers}
         onSuccess={() => queryClient.invalidateQueries({ queryKey: ["stock"] })}
         sessionStatus={session?.status}
+        onVerify={(item) => verifyMutation.mutate(item.id)}
       />
 
       <AssignZonesSheet

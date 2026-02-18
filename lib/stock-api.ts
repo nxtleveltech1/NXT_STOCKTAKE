@@ -158,6 +158,19 @@ export async function fetchZones() {
   return res.json()
 }
 
+export type TeamStatsItem = {
+  userId: string
+  zoneCode: string | null
+  itemsCounted: number
+  lastActive: string
+}
+
+export async function fetchTeamStats(): Promise<TeamStatsItem[]> {
+  const res = await fetch('/api/stock/team-stats')
+  if (!res.ok) throw new Error('Failed to fetch team stats')
+  return res.json()
+}
+
 export async function updateItemCount(
   id: string,
   countedQty: number,
@@ -189,6 +202,20 @@ export type UpdateStockItemInput = {
   owner?: string | null
   supplier?: string | null
   countedQty?: number
+  verified?: boolean
+}
+
+export async function verifyStockItem(id: string): Promise<StockItem> {
+  const res = await fetch(`/api/stock/items/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ verified: true }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { error?: string }).error ?? 'Failed to verify')
+  }
+  return res.json() as Promise<StockItem>
 }
 
 export async function updateStockItem(
@@ -207,6 +234,7 @@ export async function updateStockItem(
   if (data.owner !== undefined) body.owner = data.owner
   if (data.supplier !== undefined) body.supplier = data.supplier
   if (typeof data.countedQty === 'number') body.countedQty = data.countedQty
+  if (data.verified === true) body.verified = true
 
   const res = await fetch(`/api/stock/items/${id}`, {
     method: 'PATCH',

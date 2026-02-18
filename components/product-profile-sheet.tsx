@@ -32,8 +32,8 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { BarcodeScanner } from "@/components/barcode-scanner"
 import type { StockItem } from "@/lib/stock-store"
-import { updateStockItem, type UpdateStockItemInput } from "@/lib/stock-api"
-import { Check, Minus, Plus, Package, ScanBarcode } from "lucide-react"
+import { updateStockItem, verifyStockItem, type UpdateStockItemInput } from "@/lib/stock-api"
+import { Check, Minus, Plus, Package, ScanBarcode, ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
 
 const schema = z.object({
@@ -58,6 +58,7 @@ type ProductProfileSheetProps = {
   suppliers: string[]
   onSuccess: () => void
   sessionStatus?: "live" | "paused" | "completed"
+  onVerify?: (item: StockItem) => void
 }
 
 export function ProductProfileSheet({
@@ -69,6 +70,7 @@ export function ProductProfileSheet({
   suppliers,
   onSuccess,
   sessionStatus = "live",
+  onVerify,
 }: ProductProfileSheetProps) {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -335,6 +337,31 @@ export function ProductProfileSheet({
                   </FormItem>
                 )}
               />
+
+              {item.status === "variance" && onVerify && (
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <Label className="text-sm font-medium">Verify Variance</Label>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Confirm this variance is correct and mark as verified.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-2 gap-2"
+                    onClick={() => {
+                      if (sessionStatus !== "live") {
+                        toast.error("Verifying is disabled when session is paused or completed")
+                        return
+                      }
+                      onVerify(item)
+                    }}
+                    disabled={sessionStatus !== "live"}
+                  >
+                    <ShieldCheck className="h-4 w-4" />
+                    Verify
+                  </Button>
+                </div>
+              )}
 
               <div className="rounded-lg border bg-muted/30 p-4">
                 <Label className="text-sm font-medium">Stock Count</Label>

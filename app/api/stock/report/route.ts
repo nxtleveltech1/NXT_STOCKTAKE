@@ -1,30 +1,91 @@
 import { NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
+import { jsPDF } from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { orgId } = await auth()
+  if (!orgId) return NextResponse.json({ error: 'Organization required' }, { status: 403 })
+
+  const itemWhere = { organizationId: orgId }
   const [session, zones, items] = await Promise.all([
     db.stockSession.findFirst({
+      where: { organizationId: orgId },
       orderBy: { startedAt: 'desc' },
     }),
     db.stockItem.groupBy({
       by: ['location'],
-      where: { location: { not: '' } },
+      where: { ...itemWhere, location: { not: '' } },
       _count: { id: true },
       _sum: { expectedQty: true },
     }),
     db.stockItem.findMany({
-      where: { status: { in: ['counted', 'variance', 'verified'] } },
+      where: { ...itemWhere, status: { in: ['counted', 'variance', 'verified'] } },
       orderBy: [{ status: 'asc' }, { location: 'asc' }],
       take: 500,
     }),
   ])
 
-  const total = await db.stockItem.count()
+  const total = await db.stockItem.count({ where: itemWhere })
   const counted = await db.stockItem.count({
-    where: { status: { in: ['counted', 'variance', 'verified'] } },
+    where: { ...itemWhere, status: { in: ['counted', 'variance', 'verified'] } },
   })
-  const variance = await db.stockItem.count({ where: { status: 'variance' } })
-  const verified = await db.stockItem.count({ where: { status: 'verified' } })
+  const variance = await db.stockItem.count({ where: { ...itemWhere, status: 'variance' } })
+  const verified = await db.stockItem.count({ where: { ...itemWhere, status: 'verified' } })
+
+  const { searchParams } = new URL(request.url)
+  const format = searchParams.get('format')
+
+  if (format === 'pdf') {
+    const doc = new jsPDF()
+    doc.setFontSize(18)
+    doc.text('Stock Take Report', 14, 20)
+    doc.setFontSize(10)
+    doc.text(`Generated: ${new Date().toISOString()}`, 14, 28)
+    doc.text(`Session: ${session?.name ?? 'Default'} (${session?.status ?? 'live'})`, 14, 34)
+
+    doc.setFontSize(12)
+    doc.text(`Total: ${total}  |  Counted: ${counted}  |  Variances: ${variance}  |  Verified: ${verified}`, 14, 44)
+
+    const zoneTableData = zones.map((z) => [
+      z.location,
+      String((z._sum.expectedQty ?? 0) || z._count.id),
+    ])
+    autoTable(doc, {
+      startY: 52,
+      head: [['Zone', 'Items']],
+      body: zoneTableData,
+    })
+
+    const finalY = (doc as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? 52
+    doc.setFontSize(12)
+    doc.text('Recent Counts (sample)', 14, finalY + 12)
+
+    const itemTableData = items.slice(0, 50).map((i) => [
+      i.sku,
+      (i.name ?? '').slice(0, 30),
+      i.location,
+      String(i.expectedQty),
+      i.countedQty != null ? String(i.countedQty) : '—',
+      i.variance != null ? String(i.variance) : '—',
+      i.status,
+    ])
+    autoTable(doc, {
+      startY: finalY + 18,
+      head: [['SKU', 'Name', 'Location', 'Expected', 'Counted', 'Variance', 'Status']],
+      body: itemTableData,
+      styles: { fontSize: 8 },
+    })
+
+    const pdfBuffer = Buffer.from(doc.output('arraybuffer'))
+    return new NextResponse(pdfBuffer, {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'inline; filename="stock-report.pdf"',
+      },
+    })
+  }
 
   const zoneRows = zones.map((z) => {
     const totalItems = (z._sum.expectedQty ?? 0) || z._count.id

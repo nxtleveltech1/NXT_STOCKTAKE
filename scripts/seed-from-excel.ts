@@ -25,6 +25,8 @@ async function seed() {
   const headers = ['ID', 'Product', 'Internal Ref', 'UoM', 'Serial Number', 'Barcode', 'Location', 'Warehouse', 'Quantity', 'Reserved', 'Available', 'Owner']
 
   const BATCH_SIZE = 500
+  const orgId = process.env.CLERK_ORG_ID ?? null
+  if (!orgId) console.warn('CLERK_ORG_ID not set – items will have null organizationId')
 
   const existing = await db.stockItem.count()
   if (existing > 0) {
@@ -42,6 +44,7 @@ async function seed() {
       const available = typeof row['Available'] === 'number' ? row['Available'] : parseInt(String(row['Available'] || 0), 10) ?? null
 
       return {
+        organizationId: orgId,
         odooId,
         sku: String(row['Internal Ref'] ?? row['ID'] ?? ''),
         name: String(row['Product'] ?? ''),
@@ -73,6 +76,7 @@ async function seed() {
   if (sessions.length === 0) {
     await db.stockSession.create({
       data: {
+        organizationId: orgId,
         name: 'Q1 Full Stock Take',
         status: 'live',
         location: 'NXT Stock',

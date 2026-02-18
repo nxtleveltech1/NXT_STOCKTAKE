@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
 
 const EXPORT_LIMIT = 50_000
@@ -28,7 +29,11 @@ function escapeCsv(val: unknown): string {
 }
 
 export async function GET() {
+  const { orgId } = await auth()
+  if (!orgId) return NextResponse.json({ error: 'Organization required' }, { status: 403 })
+
   const items = await db.stockItem.findMany({
+    where: { organizationId: orgId },
     orderBy: [{ status: 'asc' }, { location: 'asc' }, { name: 'asc' }],
     take: EXPORT_LIMIT,
   })

@@ -32,6 +32,9 @@ import {
   Wifi,
   Menu,
   X,
+  Download,
+  FileText,
+  MapPin,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 
@@ -161,6 +164,7 @@ export function StockHeader({
   onToggleSession,
   onExportProgress,
   onGenerateReport,
+  onGenerateReportPdf,
   onAssignZones,
   onEndSession,
   onStartSession,
@@ -170,6 +174,7 @@ export function StockHeader({
   onToggleSession: () => void
   onExportProgress?: () => void
   onGenerateReport?: () => void
+  onGenerateReportPdf?: () => void
   onAssignZones?: () => void
   onEndSession?: () => void
   onStartSession?: () => void
@@ -284,7 +289,10 @@ export function StockHeader({
                 Export Progress
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={onGenerateReport}>
-                Generate Report
+                Generate Report (HTML)
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={onGenerateReportPdf}>
+                Generate Report (PDF)
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={onAssignZones}>
@@ -368,33 +376,83 @@ export function StockHeader({
                 {session.location}
               </div>
             </div>
-            <div className="flex gap-2">
-              {session.status !== "completed" && (
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                {(session.id === "default" || session.status === "completed") && onStartSession && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="flex-1 gap-1.5"
+                    onClick={() => { onStartSession(); setMobileMenuOpen(false); }}
+                  >
+                    <Play className="h-3.5 w-3.5" />
+                    Start Session
+                  </Button>
+                )}
+                {session.status !== "completed" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 gap-1.5 bg-transparent"
+                    onClick={() => { onToggleSession(); setMobileMenuOpen(false); }}
+                  >
+                    {session.status === "live" ? (
+                      <>
+                        <Pause className="h-3.5 w-3.5" />
+                        Pause
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-3.5 w-3.5" />
+                        Resume
+                      </>
+                    )}
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" className="flex-1 gap-1.5 bg-transparent" asChild>
+                  <Link href="/settings/team" onClick={() => setMobileMenuOpen(false)}>
+                    <Settings className="h-3.5 w-3.5" />
+                    Team
+                  </Link>
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1 gap-1.5 bg-transparent"
-                  onClick={onToggleSession}
+                  className="gap-1.5 bg-transparent text-xs"
+                  onClick={() => { onExportProgress?.(); setMobileMenuOpen(false); }}
                 >
-                  {session.status === "live" ? (
-                    <>
-                      <Pause className="h-3.5 w-3.5" />
-                      Pause
-                    </>
-                  ) : (
-                    <>
-                      <Play className="h-3.5 w-3.5" />
-                      Resume
-                    </>
-                  )}
+                  <Download className="h-3.5 w-3.5" />
+                  Export
                 </Button>
-              )}
-              <Button variant="outline" size="sm" className="flex-1 gap-1.5 bg-transparent" asChild>
-                <Link href="/settings/team">
-                  <Settings className="h-3.5 w-3.5" />
-                  Team
-                </Link>
-              </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 bg-transparent text-xs"
+                  onClick={() => { onGenerateReportPdf?.(); setMobileMenuOpen(false); }}
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  Report (PDF)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 bg-transparent text-xs"
+                  onClick={() => { onAssignZones?.(); setMobileMenuOpen(false); }}
+                >
+                  <MapPin className="h-3.5 w-3.5" />
+                  Assign Zones
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 bg-transparent text-xs text-destructive"
+                  onClick={() => { onEndSession?.(); setMobileMenuOpen(false); }}
+                >
+                  End Session
+                </Button>
+              </div>
             </div>
             <div className="flex items-center justify-end gap-2 border-t pt-3">
               <ThemeToggle />

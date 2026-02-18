@@ -29,6 +29,8 @@ bun run invite:team
 
 Adds Clerk users to the NXT Level Tech org. Uses `createOrganizationMembership` for existing users, `createOrganizationInvitation` for others. Optional: set `CLERK_ORG_ID` in `.env.local` to target a specific org.
 
+**Stock item org scoping:** After migrations, run `bun run scripts/backfill-stock-item-org.ts` to set `organizationId` on existing StockItems. Requires `CLERK_ORG_ID` in `.env.local` (NXT STOCK org ID from Clerk).
+
 ## 5. Run
 
 ```bash

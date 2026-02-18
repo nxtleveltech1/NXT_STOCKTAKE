@@ -411,6 +411,9 @@ async function seed() {
   // Step 7: Write to database
   console.log('\n6. Writing to Neon database...')
 
+  const orgId = process.env.CLERK_ORG_ID ?? null
+  if (!orgId) console.warn('   CLERK_ORG_ID not set – items will have null organizationId')
+
   const existing = await db.stockItem.count()
   if (existing > 0) {
     console.log(`   Clearing ${existing} existing stock items...`)
@@ -421,7 +424,10 @@ async function seed() {
   let inserted = 0
 
   for (let i = 0; i < stockItems.length; i += BATCH_SIZE) {
-    const batch = stockItems.slice(i, i + BATCH_SIZE)
+    const batch = stockItems.slice(i, i + BATCH_SIZE).map((item) => ({
+      ...item,
+      organizationId: orgId,
+    }))
     await db.stockItem.createMany({ data: batch })
     inserted += batch.length
     process.stdout.write(`\r   Inserted ${inserted}/${stockItems.length}`)
@@ -434,6 +440,7 @@ async function seed() {
   if (sessions.length === 0) {
     await db.stockSession.create({
       data: {
+        organizationId: orgId,
         name: 'Q1 Full Stock Take',
         status: 'live',
         location: 'NXT Stock',

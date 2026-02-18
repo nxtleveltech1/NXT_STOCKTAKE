@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
 
 const COMMON_UOMS = [
@@ -17,8 +18,11 @@ const COMMON_UOMS = [
 ]
 
 export async function GET() {
+  const { orgId } = await auth()
+  if (!orgId) return NextResponse.json({ error: 'Organization required' }, { status: 403 })
+
   const rows = await db.stockItem.findMany({
-    where: { uom: { not: null } },
+    where: { organizationId: orgId, uom: { not: null } },
     select: { uom: true },
     distinct: ['uom'],
   })
