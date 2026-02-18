@@ -1,8 +1,15 @@
 "use client"
 
 import { useEffect, useRef, useCallback, useState } from "react"
-import { ZoomIn, ZoomOut, Focus, Flashlight } from "lucide-react"
+import { ZoomIn, ZoomOut, Focus, Flashlight, Camera } from "lucide-react"
 import { validateBarcode } from "@/lib/barcode-utils"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 type BarcodeScannerProps = {
   active: boolean
@@ -22,6 +29,21 @@ type CameraCapabilities = {
 const SCANNER_ID = "stock-barcode-reader"
 const RESOLUTION = { width: { ideal: 1280 }, height: { ideal: 720 } }
 const FPS = 8
+const CAMERA_STORAGE_KEY = "stocktake-camera-id"
+
+type CameraOption = { id: string; label: string }
+
+/** Pick default camera (back preferred) from list */
+function pickDefaultCamera(cameras: CameraOption[]): string | null {
+  const back =
+    cameras.find(
+      (c) =>
+        c.label.toLowerCase().includes("back") ||
+        c.label.toLowerCase().includes("rear") ||
+        c.label.toLowerCase().includes("environment")
+    ) ?? cameras.find((c) => c.label.toLowerCase().includes("0"))
+  return back?.id ?? cameras[0]?.id ?? null
+}
 
 /** Apply advanced camera constraints (zoom, autofocus) to the active video track */
 async function applyTrackConstraints(
@@ -82,23 +104,6 @@ async function applyTrackConstraints(
   return caps
 }
 
-/** Pick back camera by ID when multiple cameras available; fallback to facingMode */
-async function selectBackCamera(): Promise<string | { facingMode: "environment" }> {
-  try {
-    const { Html5Qrcode } = await import("html5-qrcode")
-    const cameras = await Html5Qrcode.getCameras()
-    const back =
-      cameras.find(
-        (c) =>
-          c.label.toLowerCase().includes("back") ||
-          c.label.toLowerCase().includes("rear") ||
-          c.label.toLowerCase().includes("environment")
-      ) ?? cameras.find((c) => c.label.toLowerCase().includes("0"))
-    return back ? back.id : { facingMode: "environment" }
-  } catch {
-    return { facingMode: "environment" }
-  }
-}
 
 export function BarcodeScanner({
   active,
@@ -121,6 +126,8 @@ export function BarcodeScanner({
   const lastScanRef = useRef<{ value: string; at: number } | null>(null)
   const COOLDOWN_MS = 2000
 
+  const [cameras, setCameras] = useState<CameraOption[]>([])
+  const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null)
   const [caps, setCaps] = useState<CameraCapabilities>({
     zoom: null,
     focusModes: [],
@@ -215,6 +222,8 @@ export function BarcodeScanner({
             scannerRef.current = null
           })
       }
+      setCameras([])
+      setSelectedCameraId(null)
       setCaps({ zoom: null, focusModes: [], torch: false, resolution: null })
       setCurrentZoom(1)
       setTorchOn(false)
@@ -223,12 +232,40 @@ export function BarcodeScanner({
 
     let cancelled = false
 
-    async function startScanner() {
+    async function init() {
       const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import(
         "html5-qrcode"
       )
 
       if (cancelled || !mountedRef.current) return
+
+      let camerasList: CameraOption[]
+      try {
+        camerasList = await Html5Qrcode.getCameras()
+      } catch {
+        camerasList = []
+      }
+
+      if (cancelled || !mountedRef.current) return
+      setCameras(camerasList)
+
+      const defaultId = pickDefaultCamera(camerasList)
+      const savedId =
+        typeof window !== "undefined" ? localStorage.getItem(CAMERA_STORAGE_KEY) : null
+      const resolvedId =
+        savedId && camerasList.some((c) => c.id === savedId)
+          ? savedId
+          : defaultId
+
+      if (selectedCameraId === null && resolvedId !== null) {
+        setSelectedCameraId(resolvedId)
+        return
+      }
+
+      const cameraConfig =
+        selectedCameraId && camerasList.some((c) => c.id === selectedCameraId)
+          ? selectedCameraId
+          : resolvedId ?? { facingMode: "environment" as const }
 
       const element = document.getElementById(SCANNER_ID)
       if (!element) return
@@ -258,8 +295,6 @@ export function BarcodeScanner({
         disableFlip: true,
       }
 
-      const cameraConfig = await selectBackCamera()
-
       try {
         await scanner.start(
           cameraConfig,
@@ -268,36 +303,39 @@ export function BarcodeScanner({
           handleError
         )
 
-        // Apply resolution via native API (fallback on failure)
-        if (!cancelled && mountedRef.current && scannerRef.current) {
-          try {
-            await scannerRef.current.applyVideoConstraints(RESOLUTION)
-          } catch {
-            // Continue with default stream
-          }
+        if (typeof window !== "undefined" && typeof selectedCameraId === "string") {
+          localStorage.setItem(CAMERA_STORAGE_KEY, selectedCameraId)
         }
 
-        // Apply zoom + continuous autofocus + torch caps after stream is live
-        if (!cancelled && mountedRef.current) {
-          const videoEl = document.querySelector(
-            `#${SCANNER_ID} video`
-          ) as HTMLVideoElement | null
+        if (cancelled || !mountedRef.current || !scannerRef.current) return
 
-          if (videoEl) {
-            try {
-              const detected = await applyTrackConstraints(videoEl)
-              // Merge torch from native API if available
-              const nativeCaps = scannerRef.current?.getRunningTrackCapabilities?.() as { torch?: boolean } | undefined
-              if (nativeCaps?.torch) detected.torch = true
-              if (mountedRef.current) {
-                setCaps(detected)
-                if (detected.zoom) {
-                  setCurrentZoom(Math.min(2, detected.zoom.max))
-                }
+        try {
+          await scannerRef.current.applyVideoConstraints(RESOLUTION)
+        } catch {
+          // Continue with default stream
+        }
+
+        if (cancelled || !mountedRef.current) return
+
+        const videoEl = document.querySelector(
+          `#${SCANNER_ID} video`
+        ) as HTMLVideoElement | null
+
+        if (videoEl) {
+          try {
+            const detected = await applyTrackConstraints(videoEl)
+            const nativeCaps = scannerRef.current?.getRunningTrackCapabilities?.() as
+              | { torch?: boolean }
+              | undefined
+            if (nativeCaps?.torch) detected.torch = true
+            if (mountedRef.current) {
+              setCaps(detected)
+              if (detected.zoom) {
+                setCurrentZoom(Math.min(2, detected.zoom.max))
               }
-            } catch {
-              // Camera works fine without advanced constraints
             }
+          } catch {
+            // Camera works fine without advanced constraints
           }
         }
       } catch (err) {
@@ -305,7 +343,7 @@ export function BarcodeScanner({
       }
     }
 
-    startScanner()
+    init()
 
     return () => {
       cancelled = true
@@ -319,13 +357,15 @@ export function BarcodeScanner({
           })
       }
     }
-  }, [active, handleScan, handleError])
+  }, [active, selectedCameraId, handleScan, handleError])
 
   if (!active) return null
 
   const hasAutofocus = caps.focusModes.includes("continuous")
   const hasZoom = caps.zoom !== null && caps.zoom.max > 1
   const hasTorch = caps.torch
+
+  const hasMultipleCameras = cameras.length > 1
 
   return (
     <div className={className}>
@@ -334,6 +374,35 @@ export function BarcodeScanner({
           id={SCANNER_ID}
           className="min-h-[200px] w-full overflow-hidden rounded-lg bg-muted"
         />
+
+        {/* Camera selector - top left, only when multiple cameras */}
+        {hasMultipleCameras && (
+          <div className="absolute left-2 top-2 z-10">
+            <Select
+              value={selectedCameraId ?? ""}
+              onValueChange={(id) => setSelectedCameraId(id)}
+            >
+              <SelectTrigger
+                className="h-8 w-auto min-w-0 gap-1.5 border-0 bg-black/60 px-2.5 py-1 text-[10px] font-medium text-white backdrop-blur-sm hover:bg-black/70"
+                aria-label="Select camera"
+              >
+                <Camera className="h-3 w-3 shrink-0" />
+                <SelectValue placeholder="Camera" />
+              </SelectTrigger>
+              <SelectContent>
+                {cameras.map((cam) => (
+                  <SelectItem
+                    key={cam.id}
+                    value={cam.id}
+                    className="text-xs"
+                  >
+                    {cam.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Camera capability indicators + zoom controls */}
         <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
