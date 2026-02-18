@@ -78,16 +78,6 @@ export async function PATCH(
         { status: 400 }
       )
     }
-    const session = await db.stockSession.findFirst({
-      orderBy: { startedAt: 'desc' },
-      where: { organizationId: orgId },
-    })
-    if (session && (session.status === 'completed' || session.status === 'paused')) {
-      return NextResponse.json(
-        { error: 'Verifying is disabled when session is paused or completed' },
-        { status: 403 }
-      )
-    }
     updateData.status = 'verified'
     const activitySession = await db.stockSession.findFirst({
       orderBy: { startedAt: 'desc' },
@@ -108,17 +98,6 @@ export async function PATCH(
   }
 
   if (countedQty !== null) {
-    const session = await db.stockSession.findFirst({
-      orderBy: { startedAt: 'desc' },
-      where: orgId ? { organizationId: orgId } : undefined,
-    })
-    if (session && (session.status === 'completed' || session.status === 'paused')) {
-      return NextResponse.json(
-        { error: 'Counting is disabled when session is paused or completed' },
-        { status: 403 }
-      )
-    }
-
     const variance = countedQty - item.expectedQty
     const status = variance === 0 ? 'counted' : 'variance'
     updateData.countedQty = countedQty

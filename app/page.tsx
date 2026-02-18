@@ -15,22 +15,10 @@ import { AssignZonesSheet } from "@/components/assign-zones-sheet"
 import { IssueList } from "@/components/issue-list"
 import { CreateIssueSheet } from "@/components/create-issue-sheet"
 import { IssueDetailSheet } from "@/components/issue-detail-sheet"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   fetchStockItems,
   fetchStockSession,
-  createStockSession,
-  patchStockSession,
   fetchExportCsv,
   patchZoneAssignments,
   fetchLocations,
@@ -123,7 +111,6 @@ export default function StockTakeDashboard() {
   const [profileItem, setProfileItem] = useState<StockItem | null>(null)
   const [profileOpen, setProfileOpen] = useState(false)
   const [assignZonesOpen, setAssignZonesOpen] = useState(false)
-  const [endSessionDialogOpen, setEndSessionDialogOpen] = useState(false)
   const [createIssueOpen, setCreateIssueOpen] = useState(false)
   const [issueDetailId, setIssueDetailId] = useState<string | null>(null)
   const [issueDetailOpen, setIssueDetailOpen] = useState(false)
@@ -244,39 +231,6 @@ export default function StockTakeDashboard() {
     },
   })
 
-  const sessionToggleMutation = useMutation({
-    mutationFn: (status: "live" | "paused" | "completed") =>
-      patchStockSession(status),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["stock", "session"] })
-    },
-    onError: () => {
-      toast.error("Failed to update session")
-    },
-  })
-
-  const sessionCreateMutation = useMutation({
-    mutationFn: () => createStockSession(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["stock", "session"] })
-      toast.success("Session started")
-    },
-    onError: () => {
-      toast.error("Failed to start session")
-    },
-  })
-
-  const handleToggleSession = useCallback(() => {
-    if (!session) return
-    if (session.isDefault || session.id === "default") {
-      toast.error("Start a session first to use Pause/Resume")
-      return
-    }
-    const nextStatus =
-      session.status === "live" ? "paused" : session.status === "paused" ? "live" : "live"
-    sessionToggleMutation.mutate(nextStatus)
-  }, [session, sessionToggleMutation])
-
   const handleUpdateCount = useCallback(
     (id: string, qty: number, barcode?: string) => {
       updateMutation.mutate({ id, qty, barcode })
@@ -321,20 +275,6 @@ export default function StockTakeDashboard() {
   const handleAssignZones = useCallback(() => {
     setAssignZonesOpen(true)
   }, [])
-
-  const handleEndSession = useCallback(() => {
-    setEndSessionDialogOpen(true)
-  }, [])
-
-  const handleStartSession = useCallback(() => {
-    sessionCreateMutation.mutate()
-  }, [sessionCreateMutation])
-
-  const handleConfirmEndSession = useCallback(() => {
-    sessionToggleMutation.mutate("completed")
-    setEndSessionDialogOpen(false)
-    toast.success("Session ended")
-  }, [sessionToggleMutation])
 
   const handleSaveZoneAssignments = useCallback(
     async (assignments: Array<{ zoneCode: string; userId: string }>) => {
@@ -393,7 +333,7 @@ export default function StockTakeDashboard() {
     suppliers,
     onSelectItem: handleSelectItem,
     onVerify: (item) => verifyMutation.mutate(item.id),
-    sessionStatus: session?.status,
+    sessionStatus: "live",
     onRefresh: handleRefresh,
     isLoading: itemsLoading,
     itemsPerPage,
@@ -406,13 +346,10 @@ export default function StockTakeDashboard() {
         {session && (
           <StockHeader
             session={session}
-            onToggleSession={handleToggleSession}
             onExportProgress={handleExportProgress}
             onGenerateReport={handleGenerateReport}
             onGenerateReportPdf={handleGenerateReportPdf}
             onAssignZones={handleAssignZones}
-            onEndSession={handleEndSession}
-            onStartSession={handleStartSession}
             onlineMembers={teamMembers}
           />
         )}
@@ -425,14 +362,13 @@ export default function StockTakeDashboard() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      {session && (
+        {session && (
         <StockHeader
           session={session}
-          onToggleSession={handleToggleSession}
           onExportProgress={handleExportProgress}
           onGenerateReport={handleGenerateReport}
+          onGenerateReportPdf={handleGenerateReportPdf}
           onAssignZones={handleAssignZones}
-          onEndSession={handleEndSession}
           onlineMembers={teamMembers}
         />
       )}
@@ -445,7 +381,7 @@ export default function StockTakeDashboard() {
         uoms={uoms}
         suppliers={suppliers}
         onSuccess={() => queryClient.invalidateQueries({ queryKey: ["stock"] })}
-        sessionStatus={session?.status}
+        sessionStatus="live"
         onVerify={(item) => verifyMutation.mutate(item.id)}
       />
 
@@ -471,26 +407,6 @@ export default function StockTakeDashboard() {
         onOpenChange={setIssueDetailOpen}
         onSuccess={handleIssueSuccess}
       />
-
-      <AlertDialog open={endSessionDialogOpen} onOpenChange={setEndSessionDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>End Session</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will mark the session as completed. You can start a new session afterward.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmEndSession}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              End Session
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <main className="flex flex-1 flex-col">
         <Tabs
@@ -562,7 +478,7 @@ export default function StockTakeDashboard() {
               onLocationChange={setCountLocation}
               locations={locations}
               isLoading={countSearch.length >= 2 && !countItemsData}
-              sessionStatus={session?.status}
+              sessionStatus="live"
             />
           </TabsContent>
 
@@ -605,7 +521,7 @@ export default function StockTakeDashboard() {
                   onLocationChange={setCountLocation}
                   locations={locations}
                   isLoading={countSearch.length >= 2 && !countItemsData}
-                  sessionStatus={session?.status}
+                  sessionStatus="live"
                 />
                 <ZoneProgress zones={zones} teamMembers={teamMembers} />
               </div>

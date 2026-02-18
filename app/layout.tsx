@@ -23,6 +23,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: 'NXT STOCK PULSE - Live Stock Take Management',
   description: 'Real-time stock take management powered by NXT STOCK PULSE',
+  icons: { icon: '/icon.svg' },
 }
 
 export const viewport: Viewport = {

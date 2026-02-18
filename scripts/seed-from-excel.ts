@@ -27,6 +27,12 @@ async function seed() {
   const BATCH_SIZE = 500
   const orgId = NXT_STOCK_ORG_ID
 
+  const normalize = (v: unknown): string =>
+    String(v ?? '')
+      .replace(/\r\n|\r|\n/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+
   const existing = await db.stockItem.count()
   if (existing > 0) {
     console.log(`Clearing ${existing} existing StockItems...`)
@@ -42,24 +48,26 @@ async function seed() {
       const reserved = typeof row['Reserved'] === 'number' ? row['Reserved'] : parseInt(String(row['Reserved'] || 0), 10) ?? 0
       const available = typeof row['Available'] === 'number' ? row['Available'] : parseInt(String(row['Available'] || 0), 10) ?? null
 
+      const rawSku = row['Internal Ref'] ?? row['ID'] ?? ''
+      const sku = normalize(rawSku) || String(odooId)
       return {
         organizationId: orgId,
         odooId,
-        sku: String(row['Internal Ref'] ?? row['ID'] ?? ''),
-        name: String(row['Product'] ?? ''),
+        sku,
+        name: normalize(row['Product']),
         category: null as string | null,
-        location: String(row['Location'] ?? ''),
-        warehouse: (row['Warehouse'] as string) || null,
+        location: normalize(row['Location']) || 'Unknown',
+        warehouse: normalize(row['Warehouse']) || null,
         expectedQty: qty,
         reservedQty: Number.isNaN(reserved) ? null : reserved,
         availableQty: available != null && !Number.isNaN(available) ? available : null,
         countedQty: null,
         variance: null,
         status: 'pending' as const,
-        barcode: (row['Barcode'] as string) || null,
-        uom: (row['UoM'] as string) || null,
-        serialNumber: (row['Serial Number'] as string) || null,
-        owner: (row['Owner'] as string) || null,
+        barcode: normalize(row['Barcode']) || null,
+        uom: normalize(row['UoM']) || null,
+        serialNumber: normalize(row['Serial Number']) || null,
+        owner: normalize(row['Owner']) || null,
       }
     })
 

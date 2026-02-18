@@ -157,14 +157,17 @@ export function CreateIssueSheet({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Zone (optional)</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || undefined}>
+                  <Select
+                    onValueChange={(v) => field.onChange(v === "__none__" ? "" : v)}
+                    value={field.value || "__none__"}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select zone" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="__none__">None</SelectItem>
                       {zoneOptions.map((z) => (
                         <SelectItem key={z.zoneCode} value={z.zoneCode}>
                           {z.name}

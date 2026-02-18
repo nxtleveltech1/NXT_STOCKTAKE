@@ -23,8 +23,6 @@ import {
   BarChart3,
   ChevronDown,
   Clock,
-  Pause,
-  Play,
   Radio,
   Settings,
   Users,
@@ -161,23 +159,17 @@ function OnlinePopover({
 
 export function StockHeader({
   session,
-  onToggleSession,
   onExportProgress,
   onGenerateReport,
   onGenerateReportPdf,
   onAssignZones,
-  onEndSession,
-  onStartSession,
   onlineMembers = [],
 }: {
   session: StockSession
-  onToggleSession: () => void
   onExportProgress?: () => void
   onGenerateReport?: () => void
   onGenerateReportPdf?: () => void
   onAssignZones?: () => void
-  onEndSession?: () => void
-  onStartSession?: () => void
   onlineMembers?: TeamMember[]
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -254,27 +246,6 @@ export function StockHeader({
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2">
-          {!session.isDefault && session.id !== "default" && session.status !== "completed" && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="hidden gap-1.5 sm:flex bg-transparent"
-              onClick={onToggleSession}
-            >
-              {session.status === "live" ? (
-                <>
-                  <Pause className="h-3.5 w-3.5" />
-                  Pause
-                </>
-              ) : (
-                <>
-                  <Play className="h-3.5 w-3.5" />
-                  Resume
-                </>
-              )}
-            </Button>
-          )}
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="hidden gap-1.5 sm:flex bg-transparent">
@@ -284,15 +255,6 @@ export function StockHeader({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              {(session.id === "default" || session.status === "completed") && onStartSession && (
-                <>
-                  <DropdownMenuItem onSelect={onStartSession}>
-                    <Play className="h-3.5 w-3.5" />
-                    Start Session
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                </>
-              )}
               <DropdownMenuItem onSelect={onExportProgress}>
                 Export Progress
               </DropdownMenuItem>
@@ -311,13 +273,6 @@ export function StockHeader({
                   <UserCog className="h-3.5 w-3.5" />
                   Team & access
                 </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive"
-                onSelect={onEndSession}
-              >
-                End Session
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -386,37 +341,6 @@ export function StockHeader({
             </div>
             <div className="flex flex-col gap-2">
               <div className="flex gap-2">
-                {(session.isDefault || session.id === "default" || session.status === "completed") && onStartSession && (
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="flex-1 gap-1.5"
-                    onClick={() => { onStartSession(); setMobileMenuOpen(false); }}
-                  >
-                    <Play className="h-3.5 w-3.5" />
-                    Start Session
-                  </Button>
-                )}
-                {!session.isDefault && session.id !== "default" && session.status !== "completed" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 gap-1.5 bg-transparent"
-                    onClick={() => { onToggleSession(); setMobileMenuOpen(false); }}
-                  >
-                    {session.status === "live" ? (
-                      <>
-                        <Pause className="h-3.5 w-3.5" />
-                        Pause
-                      </>
-                    ) : (
-                      <>
-                        <Play className="h-3.5 w-3.5" />
-                        Resume
-                      </>
-                    )}
-                  </Button>
-                )}
                 <Button variant="outline" size="sm" className="flex-1 gap-1.5 bg-transparent" asChild>
                   <Link href="/settings/team" onClick={() => setMobileMenuOpen(false)}>
                     <Settings className="h-3.5 w-3.5" />
@@ -451,14 +375,6 @@ export function StockHeader({
                 >
                   <MapPin className="h-3.5 w-3.5" />
                   Assign Zones
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 bg-transparent text-xs text-destructive"
-                  onClick={() => { onEndSession?.(); setMobileMenuOpen(false); }}
-                >
-                  End Session
                 </Button>
               </div>
             </div>

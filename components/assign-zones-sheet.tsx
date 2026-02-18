@@ -57,7 +57,7 @@ export function AssignZonesSheet({
     setSaving(true)
     try {
       const list = Object.entries(assignments)
-        .filter(([, userId]) => userId)
+        .filter(([, userId]) => userId && userId !== "__unassigned__")
         .map(([zoneCode, userId]) => ({ zoneCode, userId }))
       await onSave(list)
       onOpenChange(false)
@@ -80,11 +80,11 @@ export function AssignZonesSheet({
             <div key={zone.zoneCode} className="flex flex-col gap-2">
               <Label className="text-sm font-medium">{zone.name}</Label>
               <Select
-                value={assignments[zone.zoneCode] ?? ""}
+                value={assignments[zone.zoneCode] || "__unassigned__"}
                 onValueChange={(v) =>
                   setAssignments((prev) => ({
                     ...prev,
-                    [zone.zoneCode]: v,
+                    [zone.zoneCode]: v === "__unassigned__" ? "" : v,
                   }))
                 }
               >
@@ -92,7 +92,7 @@ export function AssignZonesSheet({
                   <SelectValue placeholder="Unassigned" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Unassigned</SelectItem>
+                  <SelectItem value="__unassigned__">Unassigned</SelectItem>
                   {teamMembers.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
                       {m.name}
