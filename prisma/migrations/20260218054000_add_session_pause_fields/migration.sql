@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "StockSession" ADD COLUMN IF NOT EXISTS "pausedAt" TIMESTAMP;
+ALTER TABLE "StockSession" ADD COLUMN IF NOT EXISTS "totalPausedSeconds" INTEGER NOT NULL DEFAULT 0;

@@ -11,10 +11,28 @@ import { TeamPanel } from "@/components/team-panel"
 import { ActivityFeed } from "@/components/activity-feed"
 import { ZoneProgress } from "@/components/zone-progress"
 import { ProductProfileSheet } from "@/components/product-profile-sheet"
+import { AssignZonesSheet } from "@/components/assign-zones-sheet"
+import { IssueList } from "@/components/issue-list"
+import { CreateIssueSheet } from "@/components/create-issue-sheet"
+import { IssueDetailSheet } from "@/components/issue-detail-sheet"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   fetchStockItems,
   fetchStockSession,
+  createStockSession,
+  patchStockSession,
+  fetchExportCsv,
+  patchZoneAssignments,
   fetchLocations,
   fetchZones,
   fetchActivity,
@@ -32,7 +50,9 @@ import {
   Table2,
   Users,
   Activity,
+  AlertCircle,
 } from "lucide-react"
+import { toast } from "sonner"
 
 function mapOrgMembersToTeam(memberships: { publicUserData?: { userId?: string; firstName?: string; lastName?: string; identifier?: string }; role: string }[]): TeamMember[] {
   return memberships.map((m, i) => {
@@ -86,6 +106,12 @@ export default function StockTakeDashboard() {
   const [countLocation, setCountLocation] = useState("All Zones")
   const [profileItem, setProfileItem] = useState<StockItem | null>(null)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [assignZonesOpen, setAssignZonesOpen] = useState(false)
+  const [endSessionDialogOpen, setEndSessionDialogOpen] = useState(false)
+  const [createIssueOpen, setCreateIssueOpen] = useState(false)
+  const [issueDetailId, setIssueDetailId] = useState<string | null>(null)
+  const [issueDetailOpen, setIssueDetailOpen] = useState(false)
+  const [issuesStatusFilter, setIssuesStatusFilter] = useState("all")
 
   const { data: session } = useQuery({
     queryKey: ["stock", "session"],
@@ -183,11 +209,39 @@ export default function StockTakeDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["stock"] })
     },
+    onError: () => {
+      toast.error("Failed to update count")
+    },
+  })
+
+  const sessionToggleMutation = useMutation({
+    mutationFn: (status: "live" | "paused" | "completed") =>
+      patchStockSession(status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["stock", "session"] })
+    },
+    onError: () => {
+      toast.error("Failed to update session")
+    },
+  })
+
+  const sessionCreateMutation = useMutation({
+    mutationFn: () => createStockSession(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["stock", "session"] })
+      toast.success("Session started")
+    },
+    onError: () => {
+      toast.error("Failed to start session")
+    },
   })
 
   const handleToggleSession = useCallback(() => {
-    // TODO: PATCH session status
-  }, [])
+    if (!session) return
+    const nextStatus =
+      session.status === "live" ? "paused" : session.status === "paused" ? "live" : "live"
+    sessionToggleMutation.mutate(nextStatus)
+  }, [session, sessionToggleMutation])
 
   const handleUpdateCount = useCallback(
     (id: string, qty: number, barcode?: string) => {
@@ -204,6 +258,65 @@ export default function StockTakeDashboard() {
   const handleRefresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["stock"] })
   }, [queryClient])
+
+  const handleExportProgress = useCallback(async () => {
+    try {
+      const blob = await fetchExportCsv()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `stock-progress-${new Date().toISOString().slice(0, 10)}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success("Export downloaded")
+    } catch {
+      toast.error("Failed to export")
+    }
+  }, [])
+
+  const handleGenerateReport = useCallback(() => {
+    window.open("/api/stock/report", "_blank", "noopener,noreferrer")
+    toast.success("Report opened in new tab")
+  }, [])
+
+  const handleAssignZones = useCallback(() => {
+    setAssignZonesOpen(true)
+  }, [])
+
+  const handleEndSession = useCallback(() => {
+    setEndSessionDialogOpen(true)
+  }, [])
+
+  const handleStartSession = useCallback(() => {
+    sessionCreateMutation.mutate()
+  }, [sessionCreateMutation])
+
+  const handleConfirmEndSession = useCallback(() => {
+    sessionToggleMutation.mutate("completed")
+    setEndSessionDialogOpen(false)
+    toast.success("Session ended")
+  }, [sessionToggleMutation])
+
+  const handleSaveZoneAssignments = useCallback(
+    async (assignments: Array<{ zoneCode: string; userId: string }>) => {
+      await patchZoneAssignments(assignments)
+      queryClient.invalidateQueries({ queryKey: ["stock", "zones"] })
+      toast.success("Zone assignments saved")
+    },
+    [queryClient]
+  )
+
+  const handleCreateIssue = useCallback(() => setCreateIssueOpen(true), [])
+  const handleSelectIssue = useCallback((issue: { id: string }) => {
+    setIssueDetailId(issue.id)
+    setIssueDetailOpen(true)
+  }, [])
+  const handleIssueSuccess = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["stock", "issues"] })
+  }, [queryClient])
+
+  const sessionIdForIssues =
+    session?.id && session.id !== "default" ? session.id : null
 
   const items = itemsData?.items ?? []
   const countItems = countItemsData?.items ?? []
@@ -248,7 +361,16 @@ export default function StockTakeDashboard() {
     return (
       <div className="flex min-h-screen flex-col bg-background">
         {session && (
-          <StockHeader session={session} onToggleSession={handleToggleSession} onlineMembers={teamMembers} />
+          <StockHeader
+            session={session}
+            onToggleSession={handleToggleSession}
+            onExportProgress={handleExportProgress}
+            onGenerateReport={handleGenerateReport}
+            onAssignZones={handleAssignZones}
+            onEndSession={handleEndSession}
+            onStartSession={handleStartSession}
+            onlineMembers={teamMembers}
+          />
         )}
         <main className="flex flex-1 items-center justify-center p-8">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -260,7 +382,15 @@ export default function StockTakeDashboard() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       {session && (
-        <StockHeader session={session} onToggleSession={handleToggleSession} onlineMembers={teamMembers} />
+        <StockHeader
+          session={session}
+          onToggleSession={handleToggleSession}
+          onExportProgress={handleExportProgress}
+          onGenerateReport={handleGenerateReport}
+          onAssignZones={handleAssignZones}
+          onEndSession={handleEndSession}
+          onlineMembers={teamMembers}
+        />
       )}
 
       <ProductProfileSheet
@@ -271,7 +401,51 @@ export default function StockTakeDashboard() {
         uoms={uoms}
         suppliers={suppliers}
         onSuccess={() => queryClient.invalidateQueries({ queryKey: ["stock"] })}
+        sessionStatus={session?.status}
       />
+
+      <AssignZonesSheet
+        open={assignZonesOpen}
+        onOpenChange={setAssignZonesOpen}
+        zones={zones}
+        teamMembers={teamMembers}
+        onSave={handleSaveZoneAssignments}
+      />
+
+      <CreateIssueSheet
+        open={createIssueOpen}
+        onOpenChange={setCreateIssueOpen}
+        zones={zones}
+        sessionId={sessionIdForIssues}
+        onSuccess={handleIssueSuccess}
+      />
+
+      <IssueDetailSheet
+        issueId={issueDetailId}
+        open={issueDetailOpen}
+        onOpenChange={setIssueDetailOpen}
+        onSuccess={handleIssueSuccess}
+      />
+
+      <AlertDialog open={endSessionDialogOpen} onOpenChange={setEndSessionDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>End Session</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will mark the session as completed. You can start a new session afterward.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmEndSession}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              End Session
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <main className="flex flex-1 flex-col">
         <Tabs
@@ -316,13 +490,20 @@ export default function StockTakeDashboard() {
                 <Activity className="h-3.5 w-3.5" />
                 Activity
               </TabsTrigger>
+              <TabsTrigger
+                value="issues"
+                className="flex items-center gap-1.5 rounded-none border-b-2 border-transparent px-4 py-2.5 text-xs data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary"
+              >
+                <AlertCircle className="h-3.5 w-3.5" />
+                Issues
+              </TabsTrigger>
             </TabsList>
           </div>
 
           <TabsContent value="dashboard" className="flex-1 p-4 lg:hidden">
             <div className="flex flex-col gap-4">
               {session && <SessionStats session={session} />}
-              <ZoneProgress zones={zones} />
+              <ZoneProgress zones={zones} teamMembers={teamMembers} />
             </div>
           </TabsContent>
 
@@ -336,6 +517,7 @@ export default function StockTakeDashboard() {
               onLocationChange={setCountLocation}
               locations={locations}
               isLoading={countSearch.length >= 2 && !countItemsData}
+              sessionStatus={session?.status}
             />
           </TabsContent>
 
@@ -346,12 +528,22 @@ export default function StockTakeDashboard() {
           <TabsContent value="team" className="flex-1 p-4 lg:hidden">
             <div className="flex flex-col gap-4">
               <TeamPanel members={teamMembers} />
-              <ZoneProgress zones={zones} />
+              <ZoneProgress zones={zones} teamMembers={teamMembers} />
             </div>
           </TabsContent>
 
           <TabsContent value="activity" className="flex-1 p-4 lg:hidden">
             <ActivityFeed events={activityEvents} />
+          </TabsContent>
+
+          <TabsContent value="issues" className="flex-1 p-4 lg:hidden">
+            <IssueList
+              sessionId={sessionIdForIssues}
+              statusFilter={issuesStatusFilter}
+              onStatusFilterChange={setIssuesStatusFilter}
+              onCreateIssue={handleCreateIssue}
+              onSelectIssue={handleSelectIssue}
+            />
           </TabsContent>
 
           <div className="hidden flex-1 flex-col gap-4 p-4 lg:flex lg:p-6">
@@ -368,8 +560,9 @@ export default function StockTakeDashboard() {
                   onLocationChange={setCountLocation}
                   locations={locations}
                   isLoading={countSearch.length >= 2 && !countItemsData}
+                  sessionStatus={session?.status}
                 />
-                <ZoneProgress zones={zones} />
+                <ZoneProgress zones={zones} teamMembers={teamMembers} />
               </div>
 
               <div className="col-span-8">
@@ -379,6 +572,13 @@ export default function StockTakeDashboard() {
               <div className="col-span-2 flex flex-col gap-4">
                 <TeamPanel members={teamMembers} />
                 <ActivityFeed events={activityEvents} />
+                <IssueList
+                  sessionId={sessionIdForIssues}
+                  statusFilter={issuesStatusFilter}
+                  onStatusFilterChange={setIssuesStatusFilter}
+                  onCreateIssue={handleCreateIssue}
+                  onSelectIssue={handleSelectIssue}
+                />
               </div>
             </div>
           </div>

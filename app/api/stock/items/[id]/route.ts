@@ -66,6 +66,17 @@ export async function PATCH(
     )
 
   if (countedQty !== null) {
+    const session = await db.stockSession.findFirst({
+      orderBy: { startedAt: 'desc' },
+      where: orgId ? { organizationId: orgId } : undefined,
+    })
+    if (session && (session.status === 'completed' || session.status === 'paused')) {
+      return NextResponse.json(
+        { error: 'Counting is disabled when session is paused or completed' },
+        { status: 403 }
+      )
+    }
+
     const variance = countedQty - item.expectedQty
     const status = variance === 0 ? 'counted' : 'variance'
     updateData.countedQty = countedQty
@@ -74,7 +85,7 @@ export async function PATCH(
     updateData.lastCountedBy = userName
     updateData.lastCountedAt = new Date()
 
-    const session = await db.stockSession.findFirst({
+    const activitySession = await db.stockSession.findFirst({
       orderBy: { startedAt: 'desc' },
       where: orgId ? { organizationId: orgId } : undefined,
     })
@@ -86,7 +97,7 @@ export async function PATCH(
     await db.stockActivity.create({
       data: {
         organizationId: orgId ?? undefined,
-        sessionId: session?.id ?? undefined,
+        sessionId: activitySession?.id ?? undefined,
         type: activityType,
         message: activityMessage,
         userId: userId ?? undefined,

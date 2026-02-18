@@ -42,6 +42,8 @@ export type StockSession = {
   name: string
   status: "live" | "paused" | "completed"
   startedAt: string
+  pausedAt: string | null
+  totalPausedSeconds: number
   location: string
   totalItems: number
   countedItems: number

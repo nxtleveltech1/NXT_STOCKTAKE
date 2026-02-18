@@ -42,18 +42,20 @@ model StockItem {
 }
 
 model StockSession {
-  id             String   @id @default(cuid())
-  organizationId String?  // Clerk org id – sessions scoped to team
-  name           String
-  status         String   @default("live") // live | paused | completed
-  startedAt      DateTime @default(now())
-  location       String?
-  totalItems     Int      @default(0)
-  countedItems   Int      @default(0)
-  varianceItems  Int      @default(0)
-  verifiedItems  Int      @default(0)
-  teamMembers    Int      @default(0)
-  createdAt      DateTime @default(now())
+  id                 String    @id @default(cuid())
+  organizationId     String?   // Clerk org id – sessions scoped to team
+  name               String
+  status             String    @default("live") // live | paused | completed
+  startedAt          DateTime  @default(now())
+  pausedAt           DateTime? // when status set to paused
+  totalPausedSeconds Int       @default(0) // accumulated pause duration
+  location           String?
+  totalItems         Int       @default(0)
+  countedItems       Int       @default(0)
+  varianceItems      Int       @default(0)
+  verifiedItems      Int       @default(0)
+  teamMembers        Int       @default(0)
+  createdAt          DateTime  @default(now())
   updatedAt      DateTime @updatedAt
 
   @@index([organizationId])
@@ -74,4 +76,55 @@ model StockActivity {
   @@index([organizationId])
   @@index([sessionId])
   @@index([createdAt(sort: Desc)])
+}
+
+model ZoneAssignment {
+  id             String   @id @default(cuid())
+  organizationId String?
+  userId         String   // Clerk user id
+  zoneCode       String   // e.g. "NXT/NXT STOCK"
+  sessionId      String?
+  createdAt      DateTime @default(now())
+
+  @@unique([organizationId, zoneCode])
+  @@index([organizationId])
+}
+
+model StockIssue {
+  id             String    @id @default(cuid())
+  organizationId String?
+  sessionId      String?
+  title          String
+  description    String?
+  status         String    @default("open") // open | in_progress | resolved | closed
+  priority       String    @default("medium") // low | medium | high | critical
+  category       String?
+  zone           String?
+  itemId         String?
+  reporterId     String
+  reporterName   String
+  assigneeId     String?
+  assigneeName   String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  resolvedAt     DateTime?
+
+  stockIssueComments StockIssueComment[]
+
+  @@index([organizationId])
+  @@index([sessionId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+}
+
+model StockIssueComment {
+  id        String     @id @default(cuid())
+  issueId   String
+  issue     StockIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  userId    String
+  userName  String
+  body      String
+  createdAt DateTime   @default(now())
+
+  @@index([issueId])
 }

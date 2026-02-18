@@ -44,25 +44,49 @@ function LivePulse() {
   )
 }
 
-function ElapsedTime({ startedAt }: { startedAt: string }) {
+function ElapsedTime({
+  status,
+  startedAt,
+  pausedAt,
+  totalPausedSeconds = 0,
+}: {
+  status: string
+  startedAt: string
+  pausedAt: string | null
+  totalPausedSeconds?: number
+}) {
   const [elapsed, setElapsed] = useState("")
 
   useEffect(() => {
-    function updateElapsed() {
+    function computeElapsedMs(): number {
       const start = new Date(startedAt).getTime()
+      const totalPausedMs = (totalPausedSeconds ?? 0) * 1000
+      if (status === "paused" && pausedAt) {
+        const paused = new Date(pausedAt).getTime()
+        return paused - start - totalPausedMs
+      }
       const now = Date.now()
-      const diff = now - start
-      const hours = Math.floor(diff / (1000 * 60 * 60))
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000)
-      setElapsed(
-        `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
-      )
+      return now - start - totalPausedMs
     }
+
+    function formatElapsed(ms: number) {
+      const totalSec = Math.max(0, Math.floor(ms / 1000))
+      const hours = Math.floor(totalSec / 3600)
+      const minutes = Math.floor((totalSec % 3600) / 60)
+      const seconds = totalSec % 60
+      return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+    }
+
+    function updateElapsed() {
+      setElapsed(formatElapsed(computeElapsedMs()))
+    }
+
     updateElapsed()
-    const interval = setInterval(updateElapsed, 1000)
-    return () => clearInterval(interval)
-  }, [startedAt])
+    if (status === "live") {
+      const interval = setInterval(updateElapsed, 1000)
+      return () => clearInterval(interval)
+    }
+  }, [status, startedAt, pausedAt, totalPausedSeconds])
 
   return (
     <span className="font-mono text-sm tabular-nums text-muted-foreground">{elapsed}</span>
@@ -135,10 +159,20 @@ function OnlinePopover({
 export function StockHeader({
   session,
   onToggleSession,
+  onExportProgress,
+  onGenerateReport,
+  onAssignZones,
+  onEndSession,
+  onStartSession,
   onlineMembers = [],
 }: {
   session: StockSession
   onToggleSession: () => void
+  onExportProgress?: () => void
+  onGenerateReport?: () => void
+  onAssignZones?: () => void
+  onEndSession?: () => void
+  onStartSession?: () => void
   onlineMembers?: TeamMember[]
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -164,8 +198,12 @@ export function StockHeader({
               variant="outline"
               className="gap-1.5 border-primary/30 bg-primary/10 text-primary"
             >
-              <LivePulse />
-              {session.status === "live" ? "LIVE" : "PAUSED"}
+              {session.status === "completed" ? null : <LivePulse />}
+              {session.status === "live"
+                ? "LIVE"
+                : session.status === "paused"
+                  ? "PAUSED"
+                  : "COMPLETED"}
             </Badge>
             <span className="text-sm font-medium text-foreground">{session.id}</span>
             <span className="text-sm text-muted-foreground">{session.name}</span>
@@ -175,7 +213,12 @@ export function StockHeader({
         {/* Center: Timer (desktop) */}
         <div className="hidden items-center gap-3 lg:flex">
           <Clock className="h-4 w-4 text-muted-foreground" />
-          <ElapsedTime startedAt={session.startedAt} />
+          <ElapsedTime
+            status={session.status}
+            startedAt={session.startedAt}
+            pausedAt={session.pausedAt ?? null}
+            totalPausedSeconds={session.totalPausedSeconds ?? 0}
+          />
           <div className="h-4 w-px bg-border" />
           <OnlinePopover count={session.teamMembers} members={onlineMembers} />
           <div className="h-4 w-px bg-border" />
@@ -188,29 +231,36 @@ export function StockHeader({
         {/* Mobile timer */}
         <div className="flex items-center gap-2 lg:hidden">
           <LivePulse />
-          <ElapsedTime startedAt={session.startedAt} />
+          <ElapsedTime
+            status={session.status}
+            startedAt={session.startedAt}
+            pausedAt={session.pausedAt ?? null}
+            totalPausedSeconds={session.totalPausedSeconds ?? 0}
+          />
         </div>
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden gap-1.5 sm:flex bg-transparent"
-            onClick={onToggleSession}
-          >
-            {session.status === "live" ? (
-              <>
-                <Pause className="h-3.5 w-3.5" />
-                Pause
-              </>
-            ) : (
-              <>
-                <Play className="h-3.5 w-3.5" />
-                Resume
-              </>
-            )}
-          </Button>
+          {session.status !== "completed" && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="hidden gap-1.5 sm:flex bg-transparent"
+              onClick={onToggleSession}
+            >
+              {session.status === "live" ? (
+                <>
+                  <Pause className="h-3.5 w-3.5" />
+                  Pause
+                </>
+              ) : (
+                <>
+                  <Play className="h-3.5 w-3.5" />
+                  Resume
+                </>
+              )}
+            </Button>
+          )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -221,10 +271,25 @@ export function StockHeader({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem>Export Progress</DropdownMenuItem>
-              <DropdownMenuItem>Generate Report</DropdownMenuItem>
+              {(session.id === "default" || session.status === "completed") && onStartSession && (
+                <>
+                  <DropdownMenuItem onSelect={onStartSession}>
+                    <Play className="h-3.5 w-3.5" />
+                    Start Session
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              <DropdownMenuItem onSelect={onExportProgress}>
+                Export Progress
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={onGenerateReport}>
+                Generate Report
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Assign Zones</DropdownMenuItem>
+              <DropdownMenuItem onSelect={onAssignZones}>
+                Assign Zones
+              </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/settings/team" className="flex items-center gap-2">
                   <UserCog className="h-3.5 w-3.5" />
@@ -232,7 +297,10 @@ export function StockHeader({
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive">
+              <DropdownMenuItem
+                className="text-destructive"
+                onSelect={onEndSession}
+              >
                 End Session
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -277,8 +345,12 @@ export function StockHeader({
                 variant="outline"
                 className="gap-1.5 border-primary/30 bg-primary/10 text-primary"
               >
-                <LivePulse />
-                {session.status === "live" ? "LIVE" : "PAUSED"}
+                {session.status === "completed" ? null : <LivePulse />}
+                {session.status === "live"
+                  ? "LIVE"
+                  : session.status === "paused"
+                    ? "PAUSED"
+                    : "COMPLETED"}
               </Badge>
               <div className="flex items-center gap-1.5">
                 <Wifi className="h-3.5 w-3.5 text-primary" />
@@ -297,24 +369,26 @@ export function StockHeader({
               </div>
             </div>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 gap-1.5 bg-transparent"
-                onClick={onToggleSession}
-              >
-                {session.status === "live" ? (
-                  <>
-                    <Pause className="h-3.5 w-3.5" />
-                    Pause
-                  </>
-                ) : (
-                  <>
-                    <Play className="h-3.5 w-3.5" />
-                    Resume
-                  </>
-                )}
-              </Button>
+              {session.status !== "completed" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 gap-1.5 bg-transparent"
+                  onClick={onToggleSession}
+                >
+                  {session.status === "live" ? (
+                    <>
+                      <Pause className="h-3.5 w-3.5" />
+                      Pause
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-3.5 w-3.5" />
+                      Resume
+                    </>
+                  )}
+                </Button>
+              )}
               <Button variant="outline" size="sm" className="flex-1 gap-1.5 bg-transparent" asChild>
                 <Link href="/settings/team">
                   <Settings className="h-3.5 w-3.5" />

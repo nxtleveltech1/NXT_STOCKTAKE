@@ -57,6 +57,7 @@ type ProductProfileSheetProps = {
   uoms: string[]
   suppliers: string[]
   onSuccess: () => void
+  sessionStatus?: "live" | "paused" | "completed"
 }
 
 export function ProductProfileSheet({
@@ -67,6 +68,7 @@ export function ProductProfileSheet({
   uoms,
   suppliers,
   onSuccess,
+  sessionStatus = "live",
 }: ProductProfileSheetProps) {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -112,6 +114,12 @@ export function ProductProfileSheet({
     if (!item) return
     const countedQty =
       values.countedQty === "" ? undefined : Number(values.countedQty)
+    const isCountChanging =
+      countedQty !== undefined && countedQty !== (item.countedQty ?? null)
+    if (isCountChanging && sessionStatus !== "live") {
+      toast.error("Counting is disabled when session is paused or completed")
+      return
+    }
     const data: UpdateStockItemInput = {
       sku: values.sku,
       name: values.name,
@@ -330,6 +338,11 @@ export function ProductProfileSheet({
 
               <div className="rounded-lg border bg-muted/30 p-4">
                 <Label className="text-sm font-medium">Stock Count</Label>
+                {sessionStatus !== "live" && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Counting disabled when session is paused or completed
+                  </p>
+                )}
                 <div className="mt-2 flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">
                     Expected: {item.expectedQty}
@@ -342,6 +355,7 @@ export function ProductProfileSheet({
                     size="icon"
                     className="h-10 w-10"
                     onClick={() => adjustCount(-1)}
+                    disabled={sessionStatus !== "live"}
                   >
                     <Minus className="h-4 w-4" />
                   </Button>
@@ -361,6 +375,7 @@ export function ProductProfileSheet({
                               const v = e.target.value
                               field.onChange(v === "" ? "" : Number(v))
                             }}
+                            disabled={sessionStatus !== "live"}
                           />
                         </FormControl>
                         <FormMessage />
@@ -373,6 +388,7 @@ export function ProductProfileSheet({
                     size="icon"
                     className="h-10 w-10"
                     onClick={() => adjustCount(1)}
+                    disabled={sessionStatus !== "live"}
                   >
                     <Plus className="h-4 w-4" />
                   </Button>

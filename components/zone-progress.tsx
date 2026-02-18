@@ -9,9 +9,19 @@ type Zone = {
   countedItems: number
   variances: number
   assignee: string
+  assigneeId?: string | null
 }
 
-export function ZoneProgress({ zones = [] }: { zones?: Zone[] }) {
+type TeamMember = { id: string; name: string }
+
+export function ZoneProgress({
+  zones = [],
+  teamMembers = [],
+}: {
+  zones?: Zone[]
+  teamMembers?: TeamMember[]
+}) {
+  const memberById = new Map(teamMembers.map((m) => [m.id, m.name]))
   return (
     <div className="flex flex-col rounded-xl border bg-card">
       <div className="flex items-center justify-between border-b px-4 py-3">
@@ -23,7 +33,9 @@ export function ZoneProgress({ zones = [] }: { zones?: Zone[] }) {
 
       <div className="flex flex-col divide-y">
         {zones.map((zone, i) => {
-          const pct = Math.round((zone.countedItems / zone.totalItems) * 100)
+          const pct = zone.totalItems > 0
+            ? Math.round((zone.countedItems / zone.totalItems) * 100)
+            : 0
           return (
             <div
               key={i}
@@ -48,7 +60,11 @@ export function ZoneProgress({ zones = [] }: { zones?: Zone[] }) {
                   />
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{zone.assignee}</span>
+                  <span>
+                    {zone.assigneeId && memberById.has(zone.assigneeId)
+                      ? memberById.get(zone.assigneeId)
+                      : zone.assignee || "—"}
+                  </span>
                   <span>
                     {zone.variances > 0 && (
                       <span className="text-warning">

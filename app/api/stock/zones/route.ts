@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
 import { ALLOWED_LOCATIONS } from '@/lib/locations'
 
 export async function GET() {
+  const { orgId } = await auth()
+  const assignments = await db.zoneAssignment.findMany({
+    where: orgId ? { organizationId: orgId } : { organizationId: null },
+  })
+  const assigneeByZone = new Map(assignments.map((a) => [a.zoneCode, a.userId]))
+
   const grouped = await db.stockItem.groupBy({
     by: ['location'],
     where: { location: { not: '' } },
@@ -34,13 +41,16 @@ export async function GET() {
         }),
       ])
 
+      const assigneeId = assigneeByZone.get(loc)
       return {
+        zoneCode: loc,
         name: loc.split('/').pop() ?? loc,
         code: loc.split('/').pop()?.slice(0, 1).toUpperCase() ?? 'Z',
         totalItems: totalQty > 0 ? totalQty : total,
         countedItems: counted,
         variances,
-        assignee: '',
+        assignee: assigneeId ?? '',
+        assigneeId: assigneeId ?? null,
       }
     })
   )

@@ -36,6 +36,7 @@ export function QuickCount({
   onLocationChange,
   locations = ["All Zones"],
   isLoading,
+  sessionStatus = "live",
 }: {
   items: StockItem[]
   onUpdateCount: (id: string, qty: number, barcode?: string) => void
@@ -45,6 +46,7 @@ export function QuickCount({
   onLocationChange?: (v: string) => void
   locations?: string[]
   isLoading?: boolean
+  sessionStatus?: "live" | "paused" | "completed"
 }) {
   const [selectedItem, setSelectedItem] = useState<StockItem | null>(null)
   const [countValue, setCountValue] = useState("")
@@ -107,6 +109,10 @@ export function QuickCount({
 
   const handleSubmitCount = useCallback(() => {
     if (!selectedItem || countValue === "") return
+    if (sessionStatus !== "live") {
+      toast.error("Counting is disabled when session is paused or completed")
+      return
+    }
     const qty = parseInt(countValue, 10)
     if (isNaN(qty) || qty < 0) return
 
@@ -127,7 +133,7 @@ export function QuickCount({
     setCapturedBarcode(null)
     setScanToCountActive(false)
     setTimeout(() => searchRef.current?.focus(), 100)
-  }, [selectedItem, countValue, capturedBarcode, onUpdateCount])
+  }, [selectedItem, countValue, capturedBarcode, onUpdateCount, sessionStatus])
 
   const adjustCount = (delta: number) => {
     const current = parseInt(countValue, 10) || 0
@@ -487,7 +493,8 @@ export function QuickCount({
               size="sm"
               className="flex-1 gap-1.5"
               onClick={handleSubmitCount}
-              disabled={countValue === ""}
+              disabled={countValue === "" || sessionStatus !== "live"}
+              title={sessionStatus !== "live" ? "Counting disabled when session is paused or completed" : undefined}
             >
               <Check className="h-3.5 w-3.5" />
               Confirm Count
