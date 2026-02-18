@@ -1,28 +1,23 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-
-const ALLOWED_LOCATIONS = [
-  'NXT/NXT STOCK',
-  'NXT/NXT STOCK/Rental',
-  'NXT/NXT STOCK/Secondhand',
-  'NXT/NXT STOCK/Studio Rentals',
-  'NXT/NXT STOCK/Repairs',
-]
+import { ALLOWED_LOCATIONS } from '@/lib/locations'
 
 export async function GET() {
   const grouped = await db.stockItem.groupBy({
     by: ['location'],
-    where: {
-      location: { in: ALLOWED_LOCATIONS },
-    },
+    where: { location: { not: '' } },
     _count: { id: true },
     _sum: { expectedQty: true },
   })
 
   const groupMap = new Map(grouped.map((g) => [g.location, g]))
+  const fromDb = grouped.map((g) => g.location)
+  const canonicalSet = new Set(ALLOWED_LOCATIONS)
+  const extra = fromDb.filter((l) => !canonicalSet.has(l)).sort()
+  const zoneLocations = [...ALLOWED_LOCATIONS, ...extra]
 
   const withStatus = await Promise.all(
-    ALLOWED_LOCATIONS.map(async (loc) => {
+    zoneLocations.map(async (loc) => {
       const g = groupMap.get(loc)
       const total = g?._count.id ?? 0
       const totalQty = g?._sum.expectedQty ?? 0

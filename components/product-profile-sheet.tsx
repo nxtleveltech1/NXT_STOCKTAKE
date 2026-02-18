@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -82,20 +82,17 @@ export function ProductProfileSheet({
     },
   })
 
-  const ALLOWED_LOCATIONS = [
-    "NXT/NXT STOCK",
-    "NXT/NXT STOCK/Rental",
-    "NXT/NXT STOCK/Secondhand",
-    "NXT/NXT STOCK/Studio Rentals",
-    "NXT/NXT STOCK/Repairs",
-  ]
+  const assignableLocations = useMemo(
+    () => locations.filter((l) => l !== "All Zones"),
+    [locations]
+  )
 
   useEffect(() => {
     if (item && open) {
       setShowBarcodeScanner(false)
-      const location = ALLOWED_LOCATIONS.includes(item.location)
+      const location = assignableLocations.includes(item.location)
         ? item.location
-        : ALLOWED_LOCATIONS[0]
+        : assignableLocations[0] ?? item.location
       form.reset({
         sku: item.sku,
         name: item.name,
@@ -107,18 +104,9 @@ export function ProductProfileSheet({
         countedQty: item.countedQty ?? ("" as number | ""),
       })
     }
-  }, [item, open, form])
+  }, [item, open, form, assignableLocations])
 
-  const EDITABLE_LOCATIONS = [
-    "NXT/NXT STOCK",
-    "NXT/NXT STOCK/Rental",
-    "NXT/NXT STOCK/Secondhand",
-    "NXT/NXT STOCK/Studio Rentals",
-    "NXT/NXT STOCK/Repairs",
-  ]
-  const locationsForSelect = locations.filter((l) =>
-    EDITABLE_LOCATIONS.includes(l)
-  )
+  const locationsForSelect = assignableLocations
 
   const onSubmit = async (values: FormValues) => {
     if (!item) return

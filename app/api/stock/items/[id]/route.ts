@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
+import { ALLOWED_LOCATIONS } from '@/lib/locations'
 
 function displayName(firstName: string | null, lastName: string | null, userId: string): string {
   if (firstName && lastName) return `${firstName} ${lastName}`.trim()
@@ -36,16 +37,16 @@ export async function PATCH(
   if (typeof body.barcode === 'string')
     updateData.barcode = body.barcode.trim() || null
   if (typeof body.uom === 'string') updateData.uom = body.uom.trim() || null
-  const ALLOWED_LOCATIONS = [
-    'NXT/NXT STOCK',
-    'NXT/NXT STOCK/Rental',
-    'NXT/NXT STOCK/Secondhand',
-    'NXT/NXT STOCK/Studio Rentals',
-    'NXT/NXT STOCK/Repairs',
-  ]
   if (typeof body.location === 'string' && body.location.trim()) {
     const loc = body.location.trim()
-    if (ALLOWED_LOCATIONS.includes(loc)) updateData.location = loc
+    const inCanonical = (ALLOWED_LOCATIONS as readonly string[]).includes(loc)
+    const inDb =
+      !inCanonical &&
+      (await db.stockItem.findFirst({
+        where: { location: loc },
+        select: { id: true },
+      }))
+    if (inCanonical || inDb) updateData.location = loc
   }
   if (typeof body.category === 'string')
     updateData.category = body.category.trim() || null
