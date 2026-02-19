@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
-import { ALLOWED_LOCATIONS } from '@/lib/locations'
+import { ALLOWED_LOCATIONS, getLocationDisplayName } from '@/lib/locations'
 
 export async function GET() {
   const { orgId } = await auth()
@@ -48,7 +48,7 @@ export async function GET() {
       const assigneeId = assigneeByZone.get(loc)
       return {
         zoneCode: loc,
-        name: loc.split('/').pop() ?? loc,
+        name: getLocationDisplayName(loc),
         code: loc.split('/').pop()?.slice(0, 1).toUpperCase() ?? 'Z',
         totalItems: totalQty > 0 ? totalQty : total,
         countedItems: counted,

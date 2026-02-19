@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/tooltip"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { StockItem } from "@/lib/stock-store"
+import { getLocationDisplayName } from "@/lib/locations"
 import type { StockSummary } from "@/lib/stock-api"
 import {
   Search,
@@ -443,6 +444,7 @@ export function StockTable({
             onValueChange={(v) => { onZoneChange(v); resetPage() }}
             placeholder="All Zones"
             options={locations}
+            formatLabel={(v) => getLocationDisplayName(v)}
           />
           <FilterSelect
             value={categoryFilter}
@@ -665,7 +667,7 @@ export function StockTable({
                     </Badge>
                   </div>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                    <span>{item.location}</span>
+                    <span>{getLocationDisplayName(item.location)}</span>
                     {item.category && <span>{item.category}</span>}
                     {item.barcode && <span className="font-mono">BC: {item.barcode}</span>}
                     {item.uom && <span>UOM: {item.uom}</span>}
@@ -779,7 +781,7 @@ function CellRenderer({
     case "category":
       return <span className="text-xs text-muted-foreground">{item.category || "—"}</span>
     case "location":
-      return <span className="text-xs text-muted-foreground">{item.location}</span>
+      return <span className="text-xs text-muted-foreground">{getLocationDisplayName(item.location)}</span>
     case "warehouse":
       return <span className="text-xs text-muted-foreground">{item.warehouse || "—"}</span>
     case "barcode":

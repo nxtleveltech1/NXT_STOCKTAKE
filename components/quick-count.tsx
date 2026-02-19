@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select"
 import { BarcodeScanner } from "@/components/barcode-scanner"
 import type { StockItem } from "@/lib/stock-store"
+import { getLocationDisplayName } from "@/lib/locations"
 import {
   Search,
   Minus,
@@ -189,7 +190,7 @@ export function QuickCount({
             <SelectContent>
               {locations.map((loc) => (
                 <SelectItem key={loc} value={loc} className="text-xs">
-                  {loc}
+                  {getLocationDisplayName(loc)}
                 </SelectItem>
               ))}
             </SelectContent>

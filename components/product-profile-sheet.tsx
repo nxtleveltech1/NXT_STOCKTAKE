@@ -32,6 +32,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { BarcodeScanner } from "@/components/barcode-scanner"
 import type { StockItem } from "@/lib/stock-store"
+import { getLocationDisplayName } from "@/lib/locations"
 import { updateStockItem, verifyStockItem, type UpdateStockItemInput } from "@/lib/stock-api"
 import { Check, Minus, Plus, Package, ScanBarcode, ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
@@ -286,7 +287,7 @@ export function ProductProfileSheet({
                       <SelectContent>
                         {locationsForSelect.map((loc) => (
                           <SelectItem key={loc} value={loc}>
-                            {loc}
+                            {getLocationDisplayName(loc)}
                           </SelectItem>
                         ))}
                       </SelectContent>
