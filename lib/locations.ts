@@ -9,6 +9,7 @@ export const ALLOWED_LOCATIONS = [
   'NXT/NXT STOCK/Secondhand',
   'NXT/NXT STOCK/Studio Rentals',
   'NXT/NXT STOCK/Repairs',
+  'NXT/NXT DATA VAULT',
 ] as const
 
 export type AllowedLocation = (typeof ALLOWED_LOCATIONS)[number]

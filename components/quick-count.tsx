@@ -54,7 +54,6 @@ export function QuickCount({
     Array<{ item: StockItem; qty: number; time: string }>
   >([])
   const [showScanner, setShowScanner] = useState(false)
-  const [scanToCountActive, setScanToCountActive] = useState(false)
   const [capturedBarcode, setCapturedBarcode] = useState<string | null>(null)
   const [localSearch, setLocalSearch] = useState(search)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -131,7 +130,6 @@ export function QuickCount({
     setSelectedItem(null)
     setCountValue("")
     setCapturedBarcode(null)
-    setScanToCountActive(false)
     setTimeout(() => searchRef.current?.focus(), 100)
   }, [selectedItem, countValue, capturedBarcode, onUpdateCount, sessionStatus])
 
@@ -362,7 +360,6 @@ export function QuickCount({
                 setSelectedItem(null)
                 setCountValue("")
                 setCapturedBarcode(null)
-                setScanToCountActive(false)
               }}
             >
               <X className="h-3.5 w-3.5" />
@@ -404,52 +401,7 @@ export function QuickCount({
             >
               <Plus className="h-5 w-5" />
             </Button>
-            <Button
-              variant={scanToCountActive ? "default" : "outline"}
-              size="sm"
-              className="h-12 shrink-0 gap-1.5 rounded-xl px-3"
-              onClick={() => {
-                setScanToCountActive((prev) => !prev)
-                if (scanToCountActive) return
-                setTimeout(() => inputRef.current?.blur(), 50)
-              }}
-            >
-              <ScanBarcode className="h-4 w-4" />
-              Scan
-            </Button>
           </div>
-
-          {/* Scan-to-count: each barcode scan adds 1 */}
-          {scanToCountActive && (
-            <div className="mt-2 flex flex-col gap-2">
-              <p className="text-xs text-muted-foreground">
-                Scan each unit to add 1 to the count
-              </p>
-              <BarcodeScanner
-                active={scanToCountActive}
-                onScan={(value) => {
-                  const expected = selectedItem.barcode?.trim()
-                  if (expected && value.trim() !== expected) {
-                    toast.error(
-                      "Scanned barcode doesn't match selected item. Rescan or change item."
-                    )
-                    return
-                  }
-                  setCapturedBarcode((prev) => prev ?? value)
-                  setCountValue((prev) => {
-                    const current = parseInt(prev, 10) || 0
-                    return (current + 1).toString()
-                  })
-                }}
-                onInvalidBarcode={(_, error) => toast.error(`Invalid barcode: ${error}`)}
-                onError={(msg) => {
-                  if (msg && !msg.includes("No barcode found")) {
-                    console.warn("Barcode scan error:", msg)
-                  }
-                }}
-              />
-            </div>
-          )}
 
           {/* Variance indicator */}
           {countValue !== "" && (

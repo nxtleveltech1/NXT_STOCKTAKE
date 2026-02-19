@@ -1,5 +1,6 @@
 "use client"
 
+import { useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -14,7 +15,8 @@ import {
   fetchIssues,
   type StockIssue,
 } from "@/lib/stock-api"
-import { AlertCircle, Plus } from "lucide-react"
+import { AlertCircle, Download, Plus } from "lucide-react"
+import { toast } from "sonner"
 
 const statusLabels: Record<string, string> = {
   open: "Open",
@@ -67,6 +69,23 @@ export function IssueList({
   const issues = data?.issues ?? []
   const total = data?.total ?? 0
 
+  const handleExport = useCallback(async () => {
+    try {
+      const res = await fetch("/api/stock/export/issues-report")
+      if (!res.ok) throw new Error("Export failed")
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `issues-and-variances-${new Date().toISOString().slice(0, 10)}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success("Issues and variances exported")
+    } catch {
+      toast.error("Failed to export")
+    }
+  }, [])
+
   return (
     <div className="flex flex-col rounded-xl border bg-card">
       <div className="flex items-center justify-between border-b px-4 py-3">
@@ -74,10 +93,16 @@ export function IssueList({
           <AlertCircle className="h-4 w-4 text-primary" />
           <h2 className="text-sm font-semibold text-foreground">Issue Log</h2>
         </div>
-        <Button size="sm" className="gap-1.5" onClick={onCreateIssue}>
-          <Plus className="h-3.5 w-3.5" />
-          New Issue
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={handleExport}>
+            <Download className="h-3.5 w-3.5" />
+            Export Excel
+          </Button>
+          <Button size="sm" className="gap-1.5" onClick={onCreateIssue}>
+            <Plus className="h-3.5 w-3.5" />
+            New Issue
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center gap-2 border-b px-4 py-2">
