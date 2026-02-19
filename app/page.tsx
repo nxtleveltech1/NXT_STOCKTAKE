@@ -205,11 +205,13 @@ export default function StockTakeDashboard() {
       id,
       qty,
       barcode,
+      location,
     }: {
       id: string
       qty: number
       barcode?: string
-    }) => updateItemCount(id, qty, barcode),
+      location?: string
+    }) => updateItemCount(id, qty, barcode, location),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["stock"] })
     },
@@ -232,8 +234,8 @@ export default function StockTakeDashboard() {
   })
 
   const handleUpdateCount = useCallback(
-    (id: string, qty: number, barcode?: string) => {
-      updateMutation.mutate({ id, qty, barcode })
+    (id: string, qty: number, barcode?: string, location?: string) => {
+      updateMutation.mutate({ id, qty, barcode, location })
     },
     [updateMutation]
   )

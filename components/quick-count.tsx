@@ -40,7 +40,7 @@ export function QuickCount({
   sessionStatus = "live",
 }: {
   items: StockItem[]
-  onUpdateCount: (id: string, qty: number, barcode?: string) => void
+  onUpdateCount: (id: string, qty: number, barcode?: string, location?: string) => void
   search: string
   onSearchChange: (s: string) => void
   location?: string
@@ -55,7 +55,9 @@ export function QuickCount({
     Array<{ item: StockItem; qty: number; time: string }>
   >([])
   const [showScanner, setShowScanner] = useState(false)
+  const [scanBarcodeForItem, setScanBarcodeForItem] = useState(false)
   const [capturedBarcode, setCapturedBarcode] = useState<string | null>(null)
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null)
   const [localSearch, setLocalSearch] = useState(search)
   const inputRef = useRef<HTMLInputElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -100,7 +102,9 @@ export function QuickCount({
     (item: StockItem, preserveBarcode?: boolean) => {
       setSelectedItem(item)
       setCountValue(item.countedQty?.toString() ?? "")
+      setSelectedLocation(item.location)
       if (!preserveBarcode) setCapturedBarcode(null)
+      setScanBarcodeForItem(false)
       onSearchChange("")
       setTimeout(() => inputRef.current?.focus(), 100)
     },
@@ -116,7 +120,12 @@ export function QuickCount({
     const qty = parseInt(countValue, 10)
     if (isNaN(qty) || qty < 0) return
 
-    onUpdateCount(selectedItem.id, qty, capturedBarcode ?? undefined)
+    onUpdateCount(
+      selectedItem.id,
+      qty,
+      capturedBarcode ?? undefined,
+      selectedLocation && selectedLocation !== 'All Zones' ? selectedLocation : undefined
+    )
     setRecentCounts((prev) => [
       {
         item: selectedItem,
@@ -131,8 +140,10 @@ export function QuickCount({
     setSelectedItem(null)
     setCountValue("")
     setCapturedBarcode(null)
+    setSelectedLocation(null)
+    setScanBarcodeForItem(false)
     setTimeout(() => searchRef.current?.focus(), 100)
-  }, [selectedItem, countValue, capturedBarcode, onUpdateCount, sessionStatus])
+  }, [selectedItem, countValue, capturedBarcode, selectedLocation, onUpdateCount, sessionStatus])
 
   const adjustCount = (delta: number) => {
     const current = parseInt(countValue, 10) || 0
@@ -361,6 +372,8 @@ export function QuickCount({
                 setSelectedItem(null)
                 setCountValue("")
                 setCapturedBarcode(null)
+                setSelectedLocation(null)
+                setScanBarcodeForItem(false)
               }}
             >
               <X className="h-3.5 w-3.5" />
@@ -372,6 +385,82 @@ export function QuickCount({
             <span className="font-mono text-sm font-medium text-foreground">
               {selectedItem.expectedQty}
             </span>
+          </div>
+
+          {/* Zone / Location selector */}
+          {locations.length > 1 && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs text-muted-foreground">Zone</span>
+              <Select
+                value={selectedLocation ?? selectedItem.location}
+                onValueChange={(v) => setSelectedLocation(v)}
+              >
+                <SelectTrigger className="h-9 bg-secondary/50 text-xs">
+                  <MapPin className="mr-1.5 h-3.5 w-3.5 text-muted-foreground" />
+                  <SelectValue placeholder="Select zone" />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.filter((l) => l !== "All Zones").map((loc) => (
+                    <SelectItem key={loc} value={loc} className="text-xs">
+                      {getLocationDisplayName(loc)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Scan barcode to update product record */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Barcode</span>
+              <Button
+                variant={scanBarcodeForItem ? "default" : "outline"}
+                size="sm"
+                className="h-8 gap-1.5 text-xs"
+                onClick={() => setScanBarcodeForItem((p) => !p)}
+              >
+                <ScanBarcode className="h-3.5 w-3.5" />
+                {scanBarcodeForItem ? "Cancel" : "Scan"}
+              </Button>
+            </div>
+            {capturedBarcode ? (
+              <p className="font-mono text-xs text-foreground">
+                {capturedBarcode}
+                <button
+                  type="button"
+                  className="ml-2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setCapturedBarcode(null)}
+                  aria-label="Clear barcode"
+                >
+                  <X className="inline h-3 w-3" />
+                </button>
+              </p>
+            ) : scanBarcodeForItem ? (
+              <BarcodeScanner
+                active={scanBarcodeForItem}
+                onScan={(value) => {
+                  if (!value?.trim()) return
+                  setCapturedBarcode(value.trim())
+                  setScanBarcodeForItem(false)
+                  toast.success("Barcode captured")
+                }}
+                onInvalidBarcode={(_, error) => toast.error(`Invalid barcode: ${error}`)}
+                onError={(msg) => {
+                  if (msg && !msg.includes("No barcode found")) {
+                    console.warn("Barcode scan error:", msg)
+                  }
+                }}
+              />
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {selectedItem.barcode ? (
+                  <>Current: <span className="font-mono text-foreground">{selectedItem.barcode}</span></>
+                ) : (
+                  "No barcode. Scan to add."
+                )}
+              </p>
+            )}
           </div>
 
           {/* Counter controls */}

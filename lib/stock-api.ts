@@ -176,10 +176,12 @@ export async function fetchTeamStats(): Promise<TeamStatsItem[]> {
 export async function updateItemCount(
   id: string,
   countedQty: number,
-  barcode?: string
+  barcode?: string,
+  location?: string
 ) {
-  const body: { countedQty: number; barcode?: string } = { countedQty }
+  const body: { countedQty: number; barcode?: string; location?: string } = { countedQty }
   if (typeof barcode === 'string' && barcode.trim()) body.barcode = barcode.trim()
+  if (typeof location === 'string' && location.trim() && location !== 'All Zones') body.location = location.trim()
   const res = await fetch(`/api/stock/items/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
