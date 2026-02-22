@@ -392,7 +392,7 @@ export function NewProductDialog({
                 className="flex-1"
                 disabled={createMutation.isPending}
               >
-                Save & publish product
+                Add product & close issue
               </Button>
         </div>
           </form>
