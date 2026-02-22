@@ -86,6 +86,41 @@ export async function fetchStockItems(opts?: {
   return res.json() as Promise<StockItemsResponse>
 }
 
+export type CreateStockItemInput = {
+  sku: string
+  name: string
+  location: string
+  expectedQty?: number
+  barcode?: string | null
+  uom?: string | null
+  category?: string | null
+  supplier?: string | null
+  warehouse?: string | null
+}
+
+export async function createStockItem(data: CreateStockItemInput): Promise<StockItem> {
+  const res = await fetch('/api/stock/items', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sku: data.sku,
+      name: data.name,
+      location: data.location,
+      expectedQty: data.expectedQty ?? 0,
+      barcode: data.barcode ?? undefined,
+      uom: data.uom ?? undefined,
+      category: data.category ?? undefined,
+      supplier: data.supplier ?? undefined,
+      warehouse: data.warehouse ?? undefined,
+    }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { error?: string }).error ?? 'Failed to create product')
+  }
+  return res.json() as Promise<StockItem>
+}
+
 export async function fetchCategories(): Promise<string[]> {
   const res = await fetch('/api/stock/categories')
   if (!res.ok) throw new Error('Failed to fetch categories')

@@ -1,6 +1,99 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { z } from 'zod'
 import { db } from '@/lib/db'
+
+const createItemSchema = z.object({
+  sku: z.string().min(1, 'SKU is required'),
+  name: z.string().min(1, 'Name is required'),
+  location: z.string().min(1, 'Location is required'),
+  expectedQty: z.number().min(0).default(0),
+  barcode: z.string().optional(),
+  uom: z.string().optional(),
+  category: z.string().optional(),
+  supplier: z.string().optional(),
+  warehouse: z.string().optional(),
+})
+
+export async function POST(request: Request) {
+  const { orgId } = await auth()
+  if (!orgId) return NextResponse.json({ error: 'Organization required' }, { status: 403 })
+
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+
+  const parsed = createItemSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Validation failed', details: parsed.error.flatten() },
+      { status: 400 }
+    )
+  }
+
+  const data = parsed.data
+
+  const maxOdoo = await db.stockItem.findFirst({
+    orderBy: { odooId: 'desc' },
+    select: { odooId: true },
+  })
+  const nextOdooId = (maxOdoo?.odooId ?? 0) + 1
+
+  const item = await db.stockItem.create({
+    data: {
+      organizationId: orgId,
+      odooId: nextOdooId,
+      sku: data.sku.trim(),
+      name: data.name.trim(),
+      location: data.location,
+      expectedQty: data.expectedQty,
+      reservedQty: null,
+      availableQty: null,
+      countedQty: null,
+      variance: null,
+      status: 'pending',
+      barcode: data.barcode?.trim() || null,
+      uom: data.uom?.trim() || null,
+      category: data.category?.trim() || null,
+      supplier: data.supplier?.trim() || null,
+      warehouse: data.warehouse?.trim() || null,
+    },
+  })
+
+  return NextResponse.json({
+    id: item.id,
+    odooId: item.odooId,
+    sku: item.sku,
+    name: item.name,
+    category: item.category ?? '',
+    location: item.location,
+    warehouse: item.warehouse ?? '',
+    expectedQty: item.expectedQty,
+    reservedQty: item.reservedQty ?? 0,
+    availableQty: item.availableQty ?? 0,
+    countedQty: item.countedQty,
+    variance: item.variance,
+    status: item.status,
+    lastCountedBy: item.lastCountedBy,
+    lastCountedAt: item.lastCountedAt
+      ? new Date(item.lastCountedAt).toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : null,
+    barcode: item.barcode ?? null,
+    uom: item.uom ?? null,
+    serialNumber: item.serialNumber ?? null,
+    owner: item.owner ?? null,
+    supplier: item.supplier ?? null,
+    supplierId: item.supplierId ?? null,
+    listPrice: item.listPrice ?? null,
+    costPrice: item.costPrice ?? null,
+  })
+}
 
 export async function GET(request: Request) {
   const { orgId } = await auth()

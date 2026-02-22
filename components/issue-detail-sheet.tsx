@@ -28,7 +28,8 @@ import {
   type StockIssueComment,
 } from "@/lib/stock-api"
 import { ISSUE_CLASSIFICATIONS } from "@/lib/constants"
-import { AlertCircle, MessageSquare, Send } from "lucide-react"
+import { NewProductDialog } from "@/components/new-product-dialog"
+import { AlertCircle, MessageSquare, PackagePlus, Send } from "lucide-react"
 import { toast } from "sonner"
 
 const statusLabels: Record<string, string> = {
@@ -67,6 +68,7 @@ export function IssueDetailSheet({
 }) {
   const queryClient = useQueryClient()
   const [commentBody, setCommentBody] = useState("")
+  const [newProductOpen, setNewProductOpen] = useState(false)
 
   const { data: issue, isLoading: issueLoading } = useQuery({
     queryKey: ["stock", "issue", issueId],
@@ -127,9 +129,22 @@ export function IssueDetailSheet({
     commentMutation.mutate(body)
   }
 
+  const handleNewProductSuccess = () => {
+    onSuccess()
+  }
+
   if (!issueId) return null
 
   return (
+    <>
+      <NewProductDialog
+        open={newProductOpen}
+        onOpenChange={setNewProductOpen}
+        defaultLocation={issue?.zone}
+        defaultName={issue?.title}
+        issueId={issueId}
+        onSuccess={handleNewProductSuccess}
+      />
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="flex w-full flex-col sm:max-w-xl">
         <SheetHeader>
@@ -194,6 +209,15 @@ export function IssueDetailSheet({
                     </SelectContent>
                   </Select>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 gap-1.5"
+                  onClick={() => setNewProductOpen(true)}
+                >
+                  <PackagePlus className="h-3.5 w-3.5" />
+                  New product
+                </Button>
               </div>
 
               {issue.description && (
@@ -262,5 +286,6 @@ export function IssueDetailSheet({
         )}
       </SheetContent>
     </Sheet>
+    </>
   )
 }
