@@ -58,20 +58,33 @@ export async function GET(request: Request) {
   const status = searchParams.get('status') ?? undefined
   const priority = searchParams.get('priority') ?? undefined
   const classification = searchParams.get('classification') ?? undefined
+  const zone = searchParams.get('zone') ?? undefined
+  const reporterId = searchParams.get('reporterId') ?? undefined
+  const assigneeId = searchParams.get('assigneeId') ?? undefined
   const search = searchParams.get('search')?.trim()
   const limit = Math.min(parseInt(searchParams.get('limit') ?? '50', 10), 100)
   const offset = Math.max(0, parseInt(searchParams.get('offset') ?? '0', 10))
 
-  type WhereInput = { organizationId?: string | null; sessionId?: string; status?: string; priority?: string; classification?: string; OR?: Array<{ title?: { contains: string; mode: 'insensitive' }; description?: { contains: string; mode: 'insensitive' } }> }
+  type WhereInput = Parameters<typeof db.stockIssue.findMany>[0]['where']
   const where: WhereInput = orgId ? { organizationId: orgId } : { organizationId: null }
   if (sessionId) where.sessionId = sessionId
   if (status) where.status = status
   if (priority) where.priority = priority
   if (classification) where.classification = classification
+  if (zone) where.zone = zone
+  if (reporterId) where.reporterId = reporterId
+  if (assigneeId) where.assigneeId = assigneeId
   if (search) {
+    const s = search
+    const contains = { contains: s, mode: 'insensitive' as const }
     where.OR = [
-      { title: { contains: search, mode: 'insensitive' } },
-      { description: { contains: search, mode: 'insensitive' } },
+      { title: contains },
+      { description: contains },
+      { zone: contains },
+      { reporterName: contains },
+      { classification: contains },
+      { category: contains },
+      { assigneeName: contains },
     ]
   }
 

@@ -15,6 +15,7 @@ import {
   fetchCategories,
   fetchWarehouses,
   fetchSuppliers,
+  fetchCounters,
   verifyStockItem,
 } from "@/lib/stock-api"
 import type { StockItem } from "@/lib/stock-store"
@@ -35,6 +36,7 @@ export default function VariancesPage() {
   const [uom, setUom] = useState("all")
   const [warehouse, setWarehouse] = useState("all")
   const [supplier, setSupplier] = useState("all")
+  const [countedBy, setCountedBy] = useState("all")
   const [profileItem, setProfileItem] = useState<StockItem | null>(null)
   const [profileOpen, setProfileOpen] = useState(false)
 
@@ -69,6 +71,11 @@ export default function VariancesPage() {
     queryFn: fetchUoms,
   })
 
+  const { data: counters = [] } = useQuery({
+    queryKey: ["stock", "counters", "variance"],
+    queryFn: () => fetchCounters({ status: "variance" }),
+  })
+
   const { data: itemsData, isLoading } = useQuery({
     queryKey: [
       "stock",
@@ -82,6 +89,7 @@ export default function VariancesPage() {
       uom,
       warehouse,
       supplier,
+      countedBy,
     ],
     queryFn: () =>
       fetchStockItems({
@@ -94,6 +102,7 @@ export default function VariancesPage() {
         uom: uom !== "all" ? uom : undefined,
         warehouse: warehouse !== "all" ? warehouse : undefined,
         supplier: supplier !== "all" ? supplier : undefined,
+        countedBy: countedBy !== "all" ? countedBy : undefined,
       }),
   })
 
@@ -177,6 +186,9 @@ export default function VariancesPage() {
     onWarehouseFilterChange: setWarehouse,
     supplierFilter: supplier,
     onSupplierFilterChange: setSupplier,
+    countedByFilter: countedBy,
+    onCountedByFilterChange: setCountedBy,
+    counters,
     locations,
     categories,
     uoms,

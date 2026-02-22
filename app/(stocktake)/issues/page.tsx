@@ -10,6 +10,7 @@ import { IssuesTable } from "@/components/issues-table"
 import {
   fetchStockSession,
   fetchIssues,
+  fetchIssueFilters,
   fetchZones,
 } from "@/lib/stock-api"
 import type { StockIssue } from "@/lib/stock-api"
@@ -26,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { toast } from "sonner"
+import { getLocationDisplayName } from "@/lib/locations"
 
 const statusLabels: Record<string, string> = {
   open: "Open",
@@ -55,6 +57,9 @@ export default function IssuesPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
   const [classificationFilter, setClassificationFilter] = useState("all")
+  const [zoneFilter, setZoneFilter] = useState("all")
+  const [reporterFilter, setReporterFilter] = useState("all")
+  const [assigneeFilter, setAssigneeFilter] = useState("all")
   const [search, setSearch] = useState("")
   const [searchDebounced, setSearchDebounced] = useState("")
   const [page, setPage] = useState(0)
@@ -74,6 +79,11 @@ export default function IssuesPage() {
     queryFn: fetchZones,
   })
 
+  const { data: issueFilters } = useQuery({
+    queryKey: ["stock", "issues", "filters"],
+    queryFn: fetchIssueFilters,
+  })
+
   const sessionId = session?.id && session.id !== "default" ? session.id : undefined
 
   useEffect(() => {
@@ -82,13 +92,16 @@ export default function IssuesPage() {
   }, [search])
 
   const { data, isLoading } = useQuery({
-    queryKey: ["stock", "issues", sessionId ?? "all", statusFilter, priorityFilter, classificationFilter, searchDebounced, page],
+    queryKey: ["stock", "issues", sessionId ?? "all", statusFilter, priorityFilter, classificationFilter, zoneFilter, reporterFilter, assigneeFilter, searchDebounced, page],
     queryFn: () =>
       fetchIssues({
         sessionId,
         status: statusFilter !== "all" ? statusFilter : undefined,
         priority: priorityFilter !== "all" ? priorityFilter : undefined,
         classification: classificationFilter !== "all" ? classificationFilter : undefined,
+        zone: zoneFilter !== "all" ? zoneFilter : undefined,
+        reporterId: reporterFilter !== "all" ? reporterFilter : undefined,
+        assigneeId: assigneeFilter !== "all" ? assigneeFilter : undefined,
         search: searchDebounced || undefined,
         limit,
         offset: page * limit,
@@ -195,7 +208,7 @@ export default function IssuesPage() {
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   type="search"
-                  placeholder="Search by title or description..."
+                  placeholder="Search by title, description, zone, reporter..."
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setPage(0) }}
                   className="pl-9"
@@ -240,6 +253,82 @@ export default function IssuesPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <Select value={zoneFilter} onValueChange={(v) => { setZoneFilter(v); setPage(0) }}>
+                <SelectTrigger className="h-8 w-[140px]">
+                  <SelectValue placeholder="Zone" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All zones</SelectItem>
+                  {(issueFilters?.zones ?? []).map((z) => (
+                    <SelectItem key={z} value={z}>
+                      {getLocationDisplayName(z)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={reporterFilter} onValueChange={(v) => { setReporterFilter(v); setPage(0) }}>
+                <SelectTrigger className="h-8 w-[140px]">
+                  <SelectValue placeholder="Reporter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All reporters</SelectItem>
+                  {(issueFilters?.reporters ?? []).map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={assigneeFilter} onValueChange={(v) => { setAssigneeFilter(v); setPage(0) }}>
+                <SelectTrigger className="h-8 w-[140px]">
+                  <SelectValue placeholder="Assignee" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All assignees</SelectItem>
+                  {(issueFilters?.assignees ?? []).map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {[
+                zoneFilter !== "all",
+                reporterFilter !== "all",
+                assigneeFilter !== "all",
+                statusFilter !== "all",
+                priorityFilter !== "all",
+                classificationFilter !== "all",
+                !!searchDebounced,
+              ].filter(Boolean).length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs text-muted-foreground"
+                  onClick={() => {
+                    setStatusFilter("all")
+                    setPriorityFilter("all")
+                    setClassificationFilter("all")
+                    setZoneFilter("all")
+                    setReporterFilter("all")
+                    setAssigneeFilter("all")
+                    setSearch("")
+                    setPage(0)
+                  }}
+                >
+                  Clear filters (
+                  {[
+                    zoneFilter !== "all",
+                    reporterFilter !== "all",
+                    assigneeFilter !== "all",
+                    statusFilter !== "all",
+                    priorityFilter !== "all",
+                    classificationFilter !== "all",
+                    !!searchDebounced,
+                  ].filter(Boolean).length}
+                  )
+                </Button>
+              )}
               <span className="text-xs text-muted-foreground">
                 {total} issue{total !== 1 ? "s" : ""}
               </span>

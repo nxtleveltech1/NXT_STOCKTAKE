@@ -173,6 +173,9 @@ export type StockTableProps = {
   onWarehouseFilterChange: (w: string) => void
   supplierFilter: string
   onSupplierFilterChange: (s: string) => void
+  countedByFilter?: string
+  onCountedByFilterChange?: (v: string) => void
+  counters?: string[]
   locations: string[]
   categories: string[]
   uoms: string[]
@@ -216,6 +219,9 @@ export function StockTable({
   onWarehouseFilterChange,
   supplierFilter,
   onSupplierFilterChange,
+  countedByFilter = "all",
+  onCountedByFilterChange,
+  counters = [],
   locations,
   categories,
   uoms,
@@ -361,6 +367,7 @@ export function StockTable({
     uomFilter !== "all" ? 1 : 0,
     warehouseFilter !== "all" ? 1 : 0,
     supplierFilter !== "all" ? 1 : 0,
+    countedByFilter !== "all" ? 1 : 0,
   ].reduce((a, b) => a + b, 0)
 
   // -----------------------------------------------------------------------
@@ -484,6 +491,15 @@ export function StockTable({
             options={["all", ...warehouses]}
             formatLabel={(v) => v === "all" ? "All warehouses" : v}
           />
+          {counters.length > 0 && onCountedByFilterChange && (
+            <FilterSelect
+              value={countedByFilter}
+              onValueChange={(v) => { onCountedByFilterChange(v); resetPage() }}
+              placeholder="All counted by"
+              options={["all", ...counters]}
+              formatLabel={(v) => v === "all" ? "All counted by" : v}
+            />
+          )}
           {!hideStatusFilter && (
             <FilterSelect
               value={statusFilter}
@@ -505,6 +521,7 @@ export function StockTable({
                 onUomFilterChange("all")
                 onWarehouseFilterChange("all")
                 onSupplierFilterChange("all")
+                onCountedByFilterChange?.("all")
                 resetPage()
               }}
             >

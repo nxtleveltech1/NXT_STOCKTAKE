@@ -66,6 +66,7 @@ export async function fetchStockItems(opts?: {
   uom?: string
   warehouse?: string
   supplier?: string
+  countedBy?: string
   page?: number
   limit?: number
 }): Promise<StockItemsResponse> {
@@ -77,6 +78,7 @@ export async function fetchStockItems(opts?: {
   if (opts?.uom) params.set('uom', opts.uom)
   if (opts?.warehouse) params.set('warehouse', opts.warehouse)
   if (opts?.supplier) params.set('supplier', opts.supplier)
+  if (opts?.countedBy) params.set('countedBy', opts.countedBy)
   if (opts?.page) params.set('page', String(opts.page))
   if (opts?.limit) params.set('limit', String(opts.limit ?? 100))
   const res = await fetch(`/api/stock/items?${params}`)
@@ -99,6 +101,15 @@ export async function fetchWarehouses(): Promise<string[]> {
 export async function fetchSuppliers(): Promise<string[]> {
   const res = await fetch('/api/stock/suppliers')
   if (!res.ok) throw new Error('Failed to fetch suppliers')
+  return res.json() as Promise<string[]>
+}
+
+export async function fetchCounters(opts?: { status?: string }): Promise<string[]> {
+  const params = new URLSearchParams()
+  if (opts?.status) params.set('status', opts.status)
+  const url = params.toString() ? `/api/stock/counters?${params}` : '/api/stock/counters'
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('Failed to fetch counters')
   return res.json() as Promise<string[]>
 }
 
@@ -329,11 +340,26 @@ export type UpdateIssueInput = {
   assigneeName?: string | null
 }
 
+export type IssueFilters = {
+  zones: string[]
+  reporters: { id: string; name: string }[]
+  assignees: { id: string; name: string }[]
+}
+
+export async function fetchIssueFilters(): Promise<IssueFilters> {
+  const res = await fetch('/api/stock/issues/filters')
+  if (!res.ok) throw new Error('Failed to fetch issue filters')
+  return res.json() as Promise<IssueFilters>
+}
+
 export async function fetchIssues(opts?: {
   sessionId?: string
   status?: string
   priority?: string
   classification?: string
+  zone?: string
+  reporterId?: string
+  assigneeId?: string
   search?: string
   limit?: number
   offset?: number
@@ -343,6 +369,9 @@ export async function fetchIssues(opts?: {
   if (opts?.status) params.set('status', opts.status)
   if (opts?.priority) params.set('priority', opts.priority)
   if (opts?.classification) params.set('classification', opts.classification)
+  if (opts?.zone) params.set('zone', opts.zone)
+  if (opts?.reporterId) params.set('reporterId', opts.reporterId)
+  if (opts?.assigneeId) params.set('assigneeId', opts.assigneeId)
   if (opts?.search) params.set('search', opts.search)
   if (opts?.limit) params.set('limit', String(opts.limit))
   if (opts?.offset) params.set('offset', String(opts.offset))

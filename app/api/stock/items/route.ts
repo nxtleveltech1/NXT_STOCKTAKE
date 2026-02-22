@@ -14,6 +14,7 @@ export async function GET(request: Request) {
   const uom = searchParams.get('uom')
   const warehouse = searchParams.get('warehouse')
   const supplier = searchParams.get('supplier')
+  const countedBy = searchParams.get('countedBy')
   const page = parseInt(searchParams.get('page') ?? '1', 10)
   const limit = Math.min(parseInt(searchParams.get('limit') ?? '100', 10), 500)
   const skip = (page - 1) * limit
@@ -38,6 +39,9 @@ export async function GET(request: Request) {
   }
   if (supplier && supplier !== 'all') {
     where.supplier = supplier
+  }
+  if (countedBy && countedBy !== 'all') {
+    where.lastCountedBy = countedBy
   }
   if (search?.trim()) {
     const s = search.trim()
