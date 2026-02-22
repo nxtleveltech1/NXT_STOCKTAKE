@@ -173,12 +173,13 @@ export function NewProductDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 max-h-[60vh] pr-4">
-          <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="flex flex-col gap-4 pt-2"
-            >
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-1 flex-col overflow-hidden"
+          >
+        <ScrollArea className="flex-1 min-h-0 max-h-[50vh] pr-4">
+          <div className="flex flex-col gap-4 pt-2 pb-4">
               <FormField
                 control={form.control}
                 name="sku"
@@ -374,27 +375,28 @@ export function NewProductDialog({
                   </FormItem>
                 )}
               />
-
-              <div className="flex gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => onOpenChange(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  className="flex-1"
-                  disabled={createMutation.isPending}
-                >
-                  Add product & close issue
-                </Button>
-              </div>
-            </form>
-          </Form>
+          </div>
         </ScrollArea>
+
+        <div className="flex shrink-0 gap-2 border-t pt-4 mt-4">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="flex-1"
+                disabled={createMutation.isPending}
+              >
+                Save & publish product
+              </Button>
+        </div>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   )
