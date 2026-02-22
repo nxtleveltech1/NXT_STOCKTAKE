@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { useState, useEffect } from "react"
 import { UserButton } from "@clerk/nextjs"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -20,6 +21,8 @@ import {
 } from "@/components/ui/popover"
 import type { StockSession, TeamMember } from "@/lib/stock-store"
 import {
+  AlertCircle,
+  AlertTriangle,
   BarChart3,
   ChevronDown,
   Clock,
@@ -172,7 +175,10 @@ export function StockHeader({
   onAssignZones?: () => void
   onlineMembers?: TeamMember[]
 }) {
+  const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const isVariances = pathname === "/variances"
+  const isIssues = pathname === "/issues"
 
   return (
     <header className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur-xl">
@@ -227,6 +233,37 @@ export function StockHeader({
             <Wifi className="h-3.5 w-3.5 text-primary" />
             <span className="text-xs text-primary">Synced</span>
           </div>
+        </div>
+
+        {/* Variances & Issues (desktop) */}
+        <div className="hidden items-center gap-2 lg:flex">
+          <Button
+            variant={isVariances ? "secondary" : "outline"}
+            size="sm"
+            className="gap-1.5 bg-transparent"
+            asChild
+          >
+            <Link href="/variances">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              Variances
+              {session.varianceItems > 0 && (
+                <Badge variant="secondary" className="ml-0.5 h-5 min-w-5 px-1.5 text-[10px]">
+                  {session.varianceItems}
+                </Badge>
+              )}
+            </Link>
+          </Button>
+          <Button
+            variant={isIssues ? "secondary" : "outline"}
+            size="sm"
+            className="gap-1.5 bg-transparent"
+            asChild
+          >
+            <Link href="/issues">
+              <AlertCircle className="h-3.5 w-3.5" />
+              Issues
+            </Link>
+          </Button>
         </div>
 
         {/* Mobile timer */}
@@ -340,6 +377,25 @@ export function StockHeader({
               </div>
             </div>
             <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="flex-1 gap-1.5 bg-transparent" asChild>
+                  <Link href="/variances" onClick={() => setMobileMenuOpen(false)}>
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    Variances
+                    {session.varianceItems > 0 && (
+                      <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">
+                        {session.varianceItems}
+                      </Badge>
+                    )}
+                  </Link>
+                </Button>
+                <Button variant="outline" size="sm" className="flex-1 gap-1.5 bg-transparent" asChild>
+                  <Link href="/issues" onClick={() => setMobileMenuOpen(false)}>
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    Issues
+                  </Link>
+                </Button>
+              </div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" className="flex-1 gap-1.5 bg-transparent" asChild>
                   <Link href="/settings/team" onClick={() => setMobileMenuOpen(false)}>

@@ -182,6 +182,10 @@ export type StockTableProps = {
   onVerify?: (item: StockItem) => void
   sessionStatus?: "live" | "paused" | "completed"
   onRefresh: () => void
+  /** When true, hide the status filter (e.g. on variances-only page) */
+  hideStatusFilter?: boolean
+  /** When true, show only variance summary card and hide others */
+  varianceOnlySummary?: boolean
   isLoading?: boolean
   itemsPerPage: number
   onItemsPerPageChange: (n: number) => void
@@ -224,6 +228,8 @@ export function StockTable({
   isLoading,
   itemsPerPage,
   onItemsPerPageChange,
+  hideStatusFilter = false,
+  varianceOnlySummary = false,
 }: StockTableProps) {
   const [sortField, setSortField] = useState<SortField>("status")
   const [sortDir, setSortDir] = useState<SortDir>("asc")
@@ -350,7 +356,7 @@ export function StockTable({
 
   const activeFilterCount = [
     zone !== "All Zones" ? 1 : 0,
-    statusFilter !== "all" ? 1 : 0,
+    !hideStatusFilter && statusFilter !== "all" ? 1 : 0,
     categoryFilter !== "all" ? 1 : 0,
     uomFilter !== "all" ? 1 : 0,
     warehouseFilter !== "all" ? 1 : 0,
@@ -379,36 +385,47 @@ export function StockTable({
   return (
     <div className="flex flex-col gap-4">
       {/* Summary stat cards - hidden on mobile */}
-      <div className="hidden lg:grid grid-cols-5 gap-3">
-        <SummaryCard
-          label="TOTAL ITEMS"
-          value={summary.total}
-          icon={<Package className="h-4 w-4" />}
-        />
-        <SummaryCard
-          label="PENDING"
-          value={summary.pending}
-          icon={<PackageSearch className="h-4 w-4" />}
-          accent="muted"
-        />
-        <SummaryCard
-          label="COUNTED"
-          value={summary.counted}
-          icon={<PackageCheck className="h-4 w-4" />}
-          accent="success"
-        />
-        <SummaryCard
-          label="VARIANCES"
-          value={summary.variance}
-          icon={<PackageX className="h-4 w-4" />}
-          accent="warning"
-        />
-        <SummaryCard
-          label="VERIFIED"
-          value={summary.verified}
-          icon={<ShieldCheck className="h-4 w-4" />}
-          accent="primary"
-        />
+      <div className={`hidden lg:grid gap-3 ${varianceOnlySummary ? "grid-cols-1 max-w-xs" : "grid-cols-5"}`}>
+        {varianceOnlySummary ? (
+          <SummaryCard
+            label="VARIANCES"
+            value={summary.variance}
+            icon={<PackageX className="h-4 w-4" />}
+            accent="warning"
+          />
+        ) : (
+          <>
+            <SummaryCard
+              label="TOTAL ITEMS"
+              value={summary.total}
+              icon={<Package className="h-4 w-4" />}
+            />
+            <SummaryCard
+              label="PENDING"
+              value={summary.pending}
+              icon={<PackageSearch className="h-4 w-4" />}
+              accent="muted"
+            />
+            <SummaryCard
+              label="COUNTED"
+              value={summary.counted}
+              icon={<PackageCheck className="h-4 w-4" />}
+              accent="success"
+            />
+            <SummaryCard
+              label="VARIANCES"
+              value={summary.variance}
+              icon={<PackageX className="h-4 w-4" />}
+              accent="warning"
+            />
+            <SummaryCard
+              label="VERIFIED"
+              value={summary.verified}
+              icon={<ShieldCheck className="h-4 w-4" />}
+              accent="primary"
+            />
+          </>
+        )}
       </div>
 
       {/* Main table card */}
@@ -467,13 +484,15 @@ export function StockTable({
             options={["all", ...warehouses]}
             formatLabel={(v) => v === "all" ? "All warehouses" : v}
           />
-          <FilterSelect
-            value={statusFilter}
-            onValueChange={(v) => { onStatusFilterChange(v); resetPage() }}
-            placeholder="All statuses"
-            options={["all", "pending", "counted", "variance", "verified"]}
-            formatLabel={(v) => v === "all" ? "All statuses" : v.charAt(0).toUpperCase() + v.slice(1)}
-          />
+          {!hideStatusFilter && (
+            <FilterSelect
+              value={statusFilter}
+              onValueChange={(v) => { onStatusFilterChange(v); resetPage() }}
+              placeholder="All statuses"
+              options={["all", "pending", "counted", "variance", "verified"]}
+              formatLabel={(v) => v === "all" ? "All statuses" : v.charAt(0).toUpperCase() + v.slice(1)}
+            />
+          )}
           {activeFilterCount > 0 && (
             <Button
               variant="ghost"
@@ -481,7 +500,7 @@ export function StockTable({
               className="h-8 text-xs text-muted-foreground"
               onClick={() => {
                 onZoneChange("All Zones")
-                onStatusFilterChange("all")
+                if (!hideStatusFilter) onStatusFilterChange("all")
                 onCategoryFilterChange("all")
                 onUomFilterChange("all")
                 onWarehouseFilterChange("all")

@@ -28,12 +28,20 @@ function escapeCsv(val: unknown): string {
     : s
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const { orgId } = await auth()
   if (!orgId) return NextResponse.json({ error: 'Organization required' }, { status: 403 })
 
+  const { searchParams } = new URL(request.url)
+  const status = searchParams.get('status')
+
+  const where: { organizationId: string; status?: string } = { organizationId: orgId }
+  if (status && status !== 'all') {
+    where.status = status
+  }
+
   const items = await db.stockItem.findMany({
-    where: { organizationId: orgId },
+    where,
     orderBy: [{ status: 'asc' }, { location: 'asc' }, { name: 'asc' }],
     take: EXPORT_LIMIT,
   })

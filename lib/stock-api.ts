@@ -130,8 +130,11 @@ export async function patchStockSession(
   return res.json() as Promise<StockSession>
 }
 
-export async function fetchExportCsv(): Promise<Blob> {
-  const res = await fetch('/api/stock/export')
+export async function fetchExportCsv(opts?: { status?: string }): Promise<Blob> {
+  const params = new URLSearchParams()
+  if (opts?.status) params.set('status', opts.status)
+  const url = params.toString() ? `/api/stock/export?${params}` : '/api/stock/export'
+  const res = await fetch(url)
   if (!res.ok) throw new Error('Failed to export')
   return res.blob()
 }
@@ -326,12 +329,16 @@ export type UpdateIssueInput = {
 export async function fetchIssues(opts?: {
   sessionId?: string
   status?: string
+  priority?: string
+  search?: string
   limit?: number
   offset?: number
 }): Promise<StockIssuesResponse> {
   const params = new URLSearchParams()
   if (opts?.sessionId) params.set('sessionId', opts.sessionId)
   if (opts?.status) params.set('status', opts.status)
+  if (opts?.priority) params.set('priority', opts.priority)
+  if (opts?.search) params.set('search', opts.search)
   if (opts?.limit) params.set('limit', String(opts.limit))
   if (opts?.offset) params.set('offset', String(opts.offset))
   const res = await fetch(`/api/stock/issues?${params}`)
