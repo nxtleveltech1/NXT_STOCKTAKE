@@ -17,6 +17,7 @@ function toIssueJson(issue: {
   description: string | null
   status: string
   priority: string
+  classification: string | null
   category: string | null
   zone: string | null
   itemId: string | null
@@ -36,6 +37,7 @@ function toIssueJson(issue: {
     description: issue.description,
     status: issue.status,
     priority: issue.priority,
+    classification: issue.classification,
     category: issue.category,
     zone: issue.zone,
     itemId: issue.itemId,
@@ -55,15 +57,17 @@ export async function GET(request: Request) {
   const sessionId = searchParams.get('sessionId') ?? undefined
   const status = searchParams.get('status') ?? undefined
   const priority = searchParams.get('priority') ?? undefined
+  const classification = searchParams.get('classification') ?? undefined
   const search = searchParams.get('search')?.trim()
   const limit = Math.min(parseInt(searchParams.get('limit') ?? '50', 10), 100)
   const offset = Math.max(0, parseInt(searchParams.get('offset') ?? '0', 10))
 
-  type WhereInput = { organizationId?: string | null; sessionId?: string; status?: string; priority?: string; OR?: Array<{ title?: { contains: string; mode: 'insensitive' }; description?: { contains: string; mode: 'insensitive' } }> }
+  type WhereInput = { organizationId?: string | null; sessionId?: string; status?: string; priority?: string; classification?: string; OR?: Array<{ title?: { contains: string; mode: 'insensitive' }; description?: { contains: string; mode: 'insensitive' } }> }
   const where: WhereInput = orgId ? { organizationId: orgId } : { organizationId: null }
   if (sessionId) where.sessionId = sessionId
   if (status) where.status = status
   if (priority) where.priority = priority
+  if (classification) where.classification = classification
   if (search) {
     where.OR = [
       { title: { contains: search, mode: 'insensitive' } },
@@ -108,6 +112,7 @@ export async function POST(request: Request) {
     ? body.priority
     : 'medium'
   const description = typeof body.description === 'string' ? body.description.trim() || null : null
+  const classification = typeof body.classification === 'string' ? body.classification.trim() || null : null
   const category = typeof body.category === 'string' ? body.category.trim() || null : null
   const zone = typeof body.zone === 'string' ? body.zone.trim() || null : null
   const itemId = typeof body.itemId === 'string' ? body.itemId.trim() || null : null
@@ -120,6 +125,7 @@ export async function POST(request: Request) {
       title,
       description,
       priority,
+      classification,
       category,
       zone,
       itemId,

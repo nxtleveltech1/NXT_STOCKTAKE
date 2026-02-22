@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { createIssue, type CreateIssueInput } from "@/lib/stock-api"
+import { ISSUE_CLASSIFICATIONS } from "@/lib/constants"
 import { AlertCircle } from "lucide-react"
 import { toast } from "sonner"
 
@@ -36,6 +37,7 @@ const schema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
   priority: z.enum(["low", "medium", "high", "critical"]),
+  classification: z.string().optional(),
   category: z.string().optional(),
   zone: z.string().optional(),
 })
@@ -61,6 +63,7 @@ export function CreateIssueSheet({
       title: "",
       description: "",
       priority: "medium",
+      classification: "",
       category: "",
       zone: "",
     },
@@ -75,6 +78,7 @@ export function CreateIssueSheet({
       title: values.title,
       description: values.description || null,
       priority: values.priority,
+      classification: values.classification || null,
       category: values.category || null,
       zone: values.zone || null,
       sessionId: sessionId ?? null,
@@ -145,6 +149,34 @@ export function CreateIssueSheet({
                       <SelectItem value="medium">Medium</SelectItem>
                       <SelectItem value="high">High</SelectItem>
                       <SelectItem value="critical">Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="classification"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Classification (optional)</FormLabel>
+                  <Select
+                    onValueChange={(v) => field.onChange(v === "__none__" ? "" : v)}
+                    value={field.value || "__none__"}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {ISSUE_CLASSIFICATIONS.map((c) => (
+                        <SelectItem key={c.value} value={c.value}>
+                          {c.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />

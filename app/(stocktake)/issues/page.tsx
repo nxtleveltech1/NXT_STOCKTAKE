@@ -1,18 +1,20 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
 import { StockHeader } from "@/components/stock-header"
 import { CreateIssueSheet } from "@/components/create-issue-sheet"
 import { IssueDetailSheet } from "@/components/issue-detail-sheet"
+import { IssuesTable } from "@/components/issues-table"
 import {
   fetchStockSession,
   fetchIssues,
   fetchZones,
 } from "@/lib/stock-api"
 import type { StockIssue } from "@/lib/stock-api"
-import { AlertCircle, ArrowLeft, Download, Plus, Search } from "lucide-react"
+import { ISSUE_CLASSIFICATIONS } from "@/lib/constants"
+import { AlertCircle, ArrowLeft, Download, Plus, RefreshCw, Search } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,15 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 
 const statusLabels: Record<string, string> = {
@@ -58,8 +51,10 @@ function formatDate(iso: string): string {
 }
 
 export default function IssuesPage() {
+  const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
+  const [classificationFilter, setClassificationFilter] = useState("all")
   const [search, setSearch] = useState("")
   const [searchDebounced, setSearchDebounced] = useState("")
   const [page, setPage] = useState(0)
@@ -87,12 +82,13 @@ export default function IssuesPage() {
   }, [search])
 
   const { data, isLoading } = useQuery({
-    queryKey: ["stock", "issues", sessionId ?? "all", statusFilter, priorityFilter, searchDebounced, page],
+    queryKey: ["stock", "issues", sessionId ?? "all", statusFilter, priorityFilter, classificationFilter, searchDebounced, page],
     queryFn: () =>
       fetchIssues({
         sessionId,
         status: statusFilter !== "all" ? statusFilter : undefined,
         priority: priorityFilter !== "all" ? priorityFilter : undefined,
+        classification: classificationFilter !== "all" ? classificationFilter : undefined,
         search: searchDebounced || undefined,
         limit,
         offset: page * limit,
@@ -107,10 +103,15 @@ export default function IssuesPage() {
     setDetailOpen(true)
   }, [])
 
+  const handleRefresh = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["stock", "issues"] })
+  }, [queryClient])
+
   const handleIssueSuccess = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["stock", "issues"] })
     setDetailOpen(false)
     setDetailId(null)
-  }, [])
+  }, [queryClient])
 
   const handleExport = useCallback(async () => {
     try {
@@ -172,6 +173,10 @@ export default function IssuesPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handleRefresh}>
+              <RefreshCw className="h-3.5 w-3.5" />
+              Refresh
+            </Button>
             <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExport}>
               <Download className="h-3.5 w-3.5" />
               Export Excel
@@ -183,57 +188,66 @@ export default function IssuesPage() {
           </div>
         </div>
 
-        <div className="flex flex-col rounded-xl border bg-card">
-          <div className="border-b px-4 py-3">
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search by title or description..."
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(0) }}
-                className="pl-9"
-              />
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col rounded-xl border bg-card">
+            <div className="border-b px-4 py-3">
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search by title or description..."
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setPage(0) }}
+                  className="pl-9"
+                />
+              </div>
             </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3">
-            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0) }}>
-              <SelectTrigger className="h-8 w-[140px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="open">Open</SelectItem>
-                <SelectItem value="in_progress">In Progress</SelectItem>
-                <SelectItem value="resolved">Resolved</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={priorityFilter} onValueChange={(v) => { setPriorityFilter(v); setPage(0) }}>
-              <SelectTrigger className="h-8 w-[140px]">
-                <SelectValue placeholder="Priority" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All priorities</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="critical">Critical</SelectItem>
-              </SelectContent>
-            </Select>
-            <span className="text-xs text-muted-foreground">
-              {total} issue{total !== 1 ? "s" : ""}
-            </span>
+            <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3">
+              <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0) }}>
+                <SelectTrigger className="h-8 w-[140px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="open">Open</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="resolved">Resolved</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={priorityFilter} onValueChange={(v) => { setPriorityFilter(v); setPage(0) }}>
+                <SelectTrigger className="h-8 w-[140px]">
+                  <SelectValue placeholder="Priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All priorities</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={classificationFilter} onValueChange={(v) => { setClassificationFilter(v); setPage(0) }}>
+                <SelectTrigger className="h-8 w-[160px]">
+                  <SelectValue placeholder="Classification" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All classifications</SelectItem>
+                  {ISSUE_CLASSIFICATIONS.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span className="text-xs text-muted-foreground">
+                {total} issue{total !== 1 ? "s" : ""}
+              </span>
+            </div>
           </div>
 
-          {isLoading ? (
-            <div className="space-y-2 p-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : issues.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-4 py-16">
+          {issues.length === 0 && !isLoading ? (
+            <div className="flex flex-col items-center justify-center gap-4 rounded-xl border bg-card py-16">
               <AlertCircle className="h-12 w-12 text-muted-foreground/50" />
               <p className="text-muted-foreground">No issues yet</p>
               <Button variant="outline" onClick={() => setCreateOpen(true)}>
@@ -245,92 +259,58 @@ export default function IssuesPage() {
             </div>
           ) : (
             <>
-              <div className="hidden md:block overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead>Zone</TableHead>
-                      <TableHead>Reporter</TableHead>
-                      <TableHead>Assignee</TableHead>
-                      <TableHead>Created</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {issues.map((issue) => (
-                      <TableRow
-                        key={issue.id}
-                        className="cursor-pointer"
-                        onClick={() => handleSelectIssue(issue)}
-                      >
-                        <TableCell className="font-medium max-w-[200px] truncate">
-                          {issue.title}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary" className="text-[10px]">
-                            {statusLabels[issue.status] ?? issue.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={`text-[10px] ${priorityColors[issue.priority] ?? ""}`}
-                          >
-                            {issue.priority}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
-                          {issue.zone ?? "—"}
-                        </TableCell>
-                        <TableCell className="text-sm">{issue.reporterName}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {issue.assigneeName ?? "—"}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {formatDate(issue.createdAt)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+              <div className="hidden md:block">
+                <IssuesTable
+                  issues={issues}
+                  total={total}
+                  onSelectIssue={handleSelectIssue}
+                  onRefresh={handleRefresh}
+                  isLoading={isLoading}
+                />
               </div>
 
               <div className="flex flex-col md:hidden">
-                {issues.map((issue) => (
-                  <button
-                    key={issue.id}
-                    type="button"
-                    className="flex flex-col gap-1 border-b px-4 py-3 text-left last:border-b-0 transition-colors hover:bg-secondary/30"
-                    onClick={() => handleSelectIssue(issue)}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-sm font-medium line-clamp-1">{issue.title}</span>
-                      <Badge
-                        variant="outline"
-                        className={`shrink-0 text-[10px] ${priorityColors[issue.priority] ?? ""}`}
-                      >
-                        {issue.priority}
-                      </Badge>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="secondary" className="h-4 px-1 py-0 text-[10px]">
-                        {statusLabels[issue.status] ?? issue.status}
-                      </Badge>
-                      {issue.zone && (
-                        <span className="text-xs text-muted-foreground">{issue.zone}</span>
-                      )}
-                      <span className="text-xs text-muted-foreground">
-                        {issue.reporterName} · {formatDate(issue.createdAt)}
-                      </span>
-                    </div>
-                  </button>
-                ))}
+                {isLoading ? (
+                  <div className="space-y-2 rounded-xl border bg-card p-4">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="h-12 w-full animate-pulse rounded bg-muted" />
+                    ))}
+                  </div>
+                ) : (
+                  issues.map((issue) => (
+                    <button
+                      key={issue.id}
+                      type="button"
+                      className="flex flex-col gap-1 border-b px-4 py-3 text-left last:border-b-0 transition-colors hover:bg-secondary/30 rounded-xl border bg-card"
+                      onClick={() => handleSelectIssue(issue)}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-sm font-medium line-clamp-1">{issue.title}</span>
+                        <Badge
+                          variant="outline"
+                          className={`shrink-0 text-[10px] ${priorityColors[issue.priority] ?? ""}`}
+                        >
+                          {issue.priority}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="secondary" className="h-4 px-1 py-0 text-[10px]">
+                          {statusLabels[issue.status] ?? issue.status}
+                        </Badge>
+                        {issue.zone && (
+                          <span className="text-xs text-muted-foreground">{issue.zone}</span>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          {issue.reporterName} · {formatDate(issue.createdAt)}
+                        </span>
+                      </div>
+                    </button>
+                  ))
+                )}
               </div>
 
               {total > limit && (
-                <div className="flex items-center justify-between border-t px-4 py-2">
+                <div className="flex items-center justify-between rounded-xl border bg-card px-4 py-2">
                   <Button
                     variant="ghost"
                     size="sm"

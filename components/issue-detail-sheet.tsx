@@ -27,6 +27,7 @@ import {
   type StockIssue,
   type StockIssueComment,
 } from "@/lib/stock-api"
+import { ISSUE_CLASSIFICATIONS } from "@/lib/constants"
 import { AlertCircle, MessageSquare, Send } from "lucide-react"
 import { toast } from "sonner"
 
@@ -80,7 +81,7 @@ export function IssueDetailSheet({
   })
 
   const updateMutation = useMutation({
-    mutationFn: (data: { status?: string; priority?: string }) =>
+    mutationFn: (data: { status?: string; priority?: string; classification?: string | null }) =>
       updateIssue(issueId!, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["stock", "issue", issueId] })
@@ -114,6 +115,10 @@ export function IssueDetailSheet({
 
   const handlePriorityChange = (priority: string) => {
     if (priority && issueId) updateMutation.mutate({ priority })
+  }
+
+  const handleClassificationChange = (classification: string) => {
+    if (issueId) updateMutation.mutate({ classification: classification === "__none__" ? null : classification })
   }
 
   const handleAddComment = () => {
@@ -170,6 +175,22 @@ export function IssueDetailSheet({
                       <SelectItem value="medium">Medium</SelectItem>
                       <SelectItem value="high">High</SelectItem>
                       <SelectItem value="critical">Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={issue.classification || "__none__"}
+                    onValueChange={handleClassificationChange}
+                  >
+                    <SelectTrigger className="h-7 min-w-[140px]">
+                      <SelectValue placeholder="Classification" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {ISSUE_CLASSIFICATIONS.map((c) => (
+                        <SelectItem key={c.value} value={c.value}>
+                          {c.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

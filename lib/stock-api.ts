@@ -282,6 +282,7 @@ export type StockIssue = {
   description: string | null
   status: 'open' | 'in_progress' | 'resolved' | 'closed'
   priority: 'low' | 'medium' | 'high' | 'critical'
+  classification: string | null
   category: string | null
   zone: string | null
   itemId: string | null
@@ -313,6 +314,7 @@ export type CreateIssueInput = {
   title: string
   description?: string | null
   priority?: 'low' | 'medium' | 'high' | 'critical'
+  classification?: string | null
   category?: string | null
   zone?: string | null
   itemId?: string | null
@@ -322,6 +324,7 @@ export type CreateIssueInput = {
 export type UpdateIssueInput = {
   status?: 'open' | 'in_progress' | 'resolved' | 'closed'
   priority?: 'low' | 'medium' | 'high' | 'critical'
+  classification?: string | null
   assigneeId?: string | null
   assigneeName?: string | null
 }
@@ -330,6 +333,7 @@ export async function fetchIssues(opts?: {
   sessionId?: string
   status?: string
   priority?: string
+  classification?: string
   search?: string
   limit?: number
   offset?: number
@@ -338,6 +342,7 @@ export async function fetchIssues(opts?: {
   if (opts?.sessionId) params.set('sessionId', opts.sessionId)
   if (opts?.status) params.set('status', opts.status)
   if (opts?.priority) params.set('priority', opts.priority)
+  if (opts?.classification) params.set('classification', opts.classification)
   if (opts?.search) params.set('search', opts.search)
   if (opts?.limit) params.set('limit', String(opts.limit))
   if (opts?.offset) params.set('offset', String(opts.offset))

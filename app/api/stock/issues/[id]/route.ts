@@ -10,6 +10,7 @@ function toIssueJson(issue: {
   description: string | null
   status: string
   priority: string
+  classification: string | null
   category: string | null
   zone: string | null
   itemId: string | null
@@ -29,6 +30,7 @@ function toIssueJson(issue: {
     description: issue.description,
     status: issue.status,
     priority: issue.priority,
+    classification: issue.classification,
     category: issue.category,
     zone: issue.zone,
     itemId: issue.itemId,
@@ -98,6 +100,9 @@ export async function PATCH(
   if (typeof body.assigneeId === 'string') {
     updateData.assigneeId = body.assigneeId.trim() || null
     updateData.assigneeName = typeof body.assigneeName === 'string' ? body.assigneeName.trim() || null : null
+  }
+  if (body.classification !== undefined) {
+    updateData.classification = typeof body.classification === 'string' ? body.classification.trim() || null : null
   }
 
   if (Object.keys(updateData).length === 0) {
