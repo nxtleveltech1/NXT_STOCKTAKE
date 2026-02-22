@@ -104,6 +104,9 @@ export async function PATCH(
   if (body.classification !== undefined) {
     updateData.classification = typeof body.classification === 'string' ? body.classification.trim() || null : null
   }
+  if (body.zone !== undefined) {
+    updateData.zone = typeof body.zone === 'string' ? body.zone.trim() || null : null
+  }
 
   if (Object.keys(updateData).length === 0) {
     return NextResponse.json(toIssueJson(issue))

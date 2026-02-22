@@ -6,6 +6,7 @@ import Link from "next/link"
 import { StockHeader } from "@/components/stock-header"
 import { StockTable } from "@/components/stock-table"
 import { ProductProfileSheet } from "@/components/product-profile-sheet"
+import { BulkChangeLocationSheet } from "@/components/bulk-change-location-sheet"
 import {
   fetchStockItems,
   fetchStockSession,
@@ -17,6 +18,7 @@ import {
   fetchSuppliers,
   fetchCounters,
   verifyStockItem,
+  bulkUpdateStockItems,
 } from "@/lib/stock-api"
 import type { StockItem } from "@/lib/stock-store"
 import type { StockSummary } from "@/lib/stock-api"
@@ -39,6 +41,8 @@ export default function VariancesPage() {
   const [countedBy, setCountedBy] = useState("all")
   const [profileItem, setProfileItem] = useState<StockItem | null>(null)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
+  const [bulkLocationSheetOpen, setBulkLocationSheetOpen] = useState(false)
 
   const { data: session } = useQuery({
     queryKey: ["stock", "session"],
@@ -113,6 +117,18 @@ export default function VariancesPage() {
       setProfileOpen(false)
       setProfileItem(null)
       toast.success("Item verified")
+    },
+    onError: (e: Error) => {
+      toast.error(e.message ?? "Failed to verify")
+    },
+  })
+
+  const bulkVerifyMutation = useMutation({
+    mutationFn: (ids: string[]) => bulkUpdateStockItems(ids, { verified: true }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["stock"] })
+      setSelectedItemIds(new Set())
+      toast.success(`Verified ${data.updated} item${data.updated !== 1 ? "s" : ""}`)
     },
     onError: (e: Error) => {
       toast.error(e.message ?? "Failed to verify")
@@ -196,6 +212,10 @@ export default function VariancesPage() {
     suppliers,
     onSelectItem: handleSelectItem,
     onVerify: (item: StockItem) => verifyMutation.mutate(item.id),
+    selectedIds: selectedItemIds,
+    onSelectionChange: setSelectedItemIds,
+    onBulkChangeLocation: () => setBulkLocationSheetOpen(true),
+    onBulkVerify: () => bulkVerifyMutation.mutate(Array.from(selectedItemIds)),
     sessionStatus: "live" as const,
     onRefresh: handleRefresh,
     isLoading,
@@ -223,6 +243,15 @@ export default function VariancesPage() {
         suppliers={suppliers}
         onSuccess={() => queryClient.invalidateQueries({ queryKey: ["stock"] })}
         sessionStatus="live"
+      />
+
+      <BulkChangeLocationSheet
+        open={bulkLocationSheetOpen}
+        onOpenChange={setBulkLocationSheetOpen}
+        ids={Array.from(selectedItemIds)}
+        locations={locations}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ["stock"] })}
+        onClearSelection={() => setSelectedItemIds(new Set())}
       />
 
       <main className="flex flex-1 flex-col p-4 lg:p-6">

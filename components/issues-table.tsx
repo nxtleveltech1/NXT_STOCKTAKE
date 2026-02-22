@@ -30,7 +30,10 @@ import {
   RefreshCw,
   Settings2,
   ArrowUpDown,
+  Tag,
+  X,
 } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 import type { StockIssue } from "@/lib/stock-api"
 import { ISSUE_CLASSIFICATIONS } from "@/lib/constants"
 
@@ -137,6 +140,10 @@ export type IssuesTableProps = {
   onSelectIssue: (issue: StockIssue) => void
   onRefresh: () => void
   isLoading?: boolean
+  /** When provided, enables bulk selection with checkboxes and bulk action bar */
+  selectedIds?: Set<string>
+  onSelectionChange?: (ids: Set<string>) => void
+  onBulkEdit?: () => void
 }
 
 export function IssuesTable({
@@ -145,6 +152,9 @@ export function IssuesTable({
   onSelectIssue,
   onRefresh,
   isLoading = false,
+  selectedIds,
+  onSelectionChange,
+  onBulkEdit,
 }: IssuesTableProps) {
   const [sortField, setSortField] = useState<SortField>("created")
   const [sortDir, setSortDir] = useState<SortDir>("desc")
@@ -217,6 +227,40 @@ export function IssuesTable({
     () => ALL_COLUMNS.filter((c) => visibleColumns.has(c.key)),
     [visibleColumns]
   )
+
+  const hasBulkSelection = onSelectionChange != null
+  const selected = selectedIds ?? new Set<string>()
+  const visibleIds = useMemo(() => new Set(sorted.map((i) => i.id)), [sorted])
+  const allVisibleSelected = sorted.length > 0 && sorted.every((i) => selected.has(i.id))
+  const someVisibleSelected = sorted.some((i) => selected.has(i.id))
+
+  const toggleSelection = useCallback(
+    (id: string) => {
+      if (!onSelectionChange) return
+      const next = new Set(selected)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      onSelectionChange(next)
+    },
+    [onSelectionChange, selected]
+  )
+
+  const toggleSelectAll = useCallback(() => {
+    if (!onSelectionChange) return
+    if (allVisibleSelected) {
+      const next = new Set(selected)
+      visibleIds.forEach((id) => next.delete(id))
+      onSelectionChange(next)
+    } else {
+      const next = new Set(selected)
+      sorted.forEach((i) => next.add(i.id))
+      onSelectionChange(next)
+    }
+  }, [onSelectionChange, selected, allVisibleSelected, visibleIds, sorted])
+
+  const clearSelection = useCallback(() => {
+    onSelectionChange?.(new Set())
+  }, [onSelectionChange])
 
   const exportCSV = useCallback(() => {
     const headers = visibleColumnDefs.map((c) => c.label)
@@ -330,10 +374,52 @@ export function IssuesTable({
         </span>
       </div>
 
+      {/* Bulk action bar */}
+      {hasBulkSelection && selected.size > 0 && (
+        <div className="flex items-center justify-between gap-2 border-b bg-muted/30 px-4 py-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">{selected.size} selected</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={onBulkEdit}
+            >
+              <Tag className="h-3.5 w-3.5" />
+              Bulk edit
+            </Button>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={clearSelection}
+            aria-label="Clear selection"
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
+
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
+              {hasBulkSelection && (
+                <TableHead className="w-10 pl-4 pr-0">
+                  <Checkbox
+                    checked={
+                      allVisibleSelected
+                        ? true
+                        : someVisibleSelected
+                          ? ("indeterminate" as const)
+                          : false
+                    }
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Select all"
+                  />
+                </TableHead>
+              )}
               {visibleColumnDefs.map((col) => (
                 <TableHead
                   key={col.key}
@@ -360,7 +446,10 @@ export function IssuesTable({
           <TableBody>
             {sorted.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={visibleColumnDefs.length} className="h-32 text-center text-sm text-muted-foreground">
+                <TableCell
+                  colSpan={visibleColumnDefs.length + (hasBulkSelection ? 1 : 0)}
+                  className="h-32 text-center text-sm text-muted-foreground"
+                >
                   No issues found
                 </TableCell>
               </TableRow>
@@ -368,9 +457,22 @@ export function IssuesTable({
               sorted.map((issue) => (
                 <TableRow
                   key={issue.id}
-                  className="cursor-pointer transition-colors hover:bg-secondary/50"
+                  className={`cursor-pointer transition-colors hover:bg-secondary/50 ${selected.has(issue.id) ? "bg-muted/50" : ""}`}
                   onClick={() => onSelectIssue(issue)}
                 >
+                  {hasBulkSelection && (
+                    <TableCell
+                      className="w-10 pl-4 pr-0"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Checkbox
+                        checked={selected.has(issue.id)}
+                        onCheckedChange={() => toggleSelection(issue.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={`Select ${issue.title}`}
+                      />
+                    </TableCell>
+                  )}
                   {visibleColumnDefs.map((col) => (
                     <TableCell key={col.key} className="max-w-[200px] truncate">
                       {col.key === "status" ? (

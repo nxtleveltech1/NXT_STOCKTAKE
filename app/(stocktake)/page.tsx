@@ -15,6 +15,7 @@ import { AssignZonesSheet } from "@/components/assign-zones-sheet"
 import { IssueList } from "@/components/issue-list"
 import { CreateIssueSheet } from "@/components/create-issue-sheet"
 import { IssueDetailSheet } from "@/components/issue-detail-sheet"
+import { BulkChangeLocationSheet } from "@/components/bulk-change-location-sheet"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   fetchStockItems,
@@ -31,6 +32,7 @@ import {
   fetchSuppliers,
   updateItemCount,
   verifyStockItem,
+  bulkUpdateStockItems,
 } from "@/lib/stock-api"
 import type { StockItem, TeamMember } from "@/lib/stock-store"
 import type { StockSummary } from "@/lib/stock-api"
@@ -115,6 +117,8 @@ export default function StockTakeDashboard() {
   const [issueDetailId, setIssueDetailId] = useState<string | null>(null)
   const [issueDetailOpen, setIssueDetailOpen] = useState(false)
   const [issuesStatusFilter, setIssuesStatusFilter] = useState("all")
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
+  const [bulkLocationSheetOpen, setBulkLocationSheetOpen] = useState(false)
 
   const { data: session } = useQuery({
     queryKey: ["stock", "session"],
@@ -340,6 +344,9 @@ export default function StockTakeDashboard() {
     isLoading: itemsLoading,
     itemsPerPage,
     onItemsPerPageChange: setItemsPerPage,
+    selectedIds: selectedItemIds,
+    onSelectionChange: setSelectedItemIds,
+    onBulkChangeLocation: () => setBulkLocationSheetOpen(true),
   }
 
   if (!mounted) {
@@ -407,6 +414,15 @@ export default function StockTakeDashboard() {
         open={issueDetailOpen}
         onOpenChange={setIssueDetailOpen}
         onSuccess={handleIssueSuccess}
+      />
+
+      <BulkChangeLocationSheet
+        open={bulkLocationSheetOpen}
+        onOpenChange={setBulkLocationSheetOpen}
+        ids={Array.from(selectedItemIds)}
+        locations={locations}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ["stock"] })}
+        onClearSelection={() => setSelectedItemIds(new Set())}
       />
 
       <main className="flex flex-1 flex-col">

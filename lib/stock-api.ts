@@ -371,6 +371,7 @@ export type UpdateIssueInput = {
   status?: 'open' | 'in_progress' | 'resolved' | 'closed'
   priority?: 'low' | 'medium' | 'high' | 'critical'
   classification?: string | null
+  zone?: string | null
   assigneeId?: string | null
   assigneeName?: string | null
 }
@@ -455,4 +456,58 @@ export async function addIssueComment(id: string, body: string): Promise<StockIs
   })
   if (!res.ok) throw new Error('Failed to add comment')
   return res.json() as Promise<StockIssueComment>
+}
+
+export type BulkUpdateStockItemsInput = {
+  location?: string
+  verified?: boolean
+}
+
+export async function bulkUpdateStockItems(
+  ids: string[],
+  data: BulkUpdateStockItemsInput
+): Promise<{ updated: number }> {
+  const body: { ids: string[]; location?: string; verified?: boolean } = { ids }
+  if (data.location != null) body.location = data.location
+  if (data.verified === true) body.verified = true
+  const res = await fetch('/api/stock/items/bulk', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { error?: string }).error ?? 'Failed to bulk update items')
+  }
+  return res.json() as Promise<{ updated: number }>
+}
+
+export type BulkUpdateIssuesInput = {
+  zone?: string | null
+  status?: 'open' | 'in_progress' | 'resolved' | 'closed'
+  priority?: 'low' | 'medium' | 'high' | 'critical'
+  assigneeId?: string | null
+  assigneeName?: string | null
+}
+
+export async function bulkUpdateIssues(
+  ids: string[],
+  data: BulkUpdateIssuesInput
+): Promise<{ updated: number }> {
+  const body: Record<string, unknown> = { ids }
+  if (data.zone !== undefined) body.zone = data.zone
+  if (data.status != null) body.status = data.status
+  if (data.priority != null) body.priority = data.priority
+  if (data.assigneeId !== undefined) body.assigneeId = data.assigneeId
+  if (data.assigneeName !== undefined) body.assigneeName = data.assigneeName
+  const res = await fetch('/api/stock/issues/bulk', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { error?: string }).error ?? 'Failed to bulk update issues')
+  }
+  return res.json() as Promise<{ updated: number }>
 }

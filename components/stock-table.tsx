@@ -55,7 +55,10 @@ import {
   PackageSearch,
   ChevronsLeft,
   ChevronsRight,
+  MapPin,
+  X,
 } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -192,6 +195,12 @@ export type StockTableProps = {
   isLoading?: boolean
   itemsPerPage: number
   onItemsPerPageChange: (n: number) => void
+  /** When provided, enables bulk selection with checkboxes and bulk action bar */
+  selectedIds?: Set<string>
+  onSelectionChange?: (ids: Set<string>) => void
+  onBulkChangeLocation?: () => void
+  /** When provided (e.g. variances page), shows bulk verify in the bulk bar */
+  onBulkVerify?: () => void
 }
 
 // ---------------------------------------------------------------------------
@@ -236,6 +245,10 @@ export function StockTable({
   onItemsPerPageChange,
   hideStatusFilter = false,
   varianceOnlySummary = false,
+  selectedIds,
+  onSelectionChange,
+  onBulkChangeLocation,
+  onBulkVerify,
 }: StockTableProps) {
   const [sortField, setSortField] = useState<SortField>("status")
   const [sortDir, setSortDir] = useState<SortDir>("asc")
@@ -340,6 +353,40 @@ export function StockTable({
     () => ALL_COLUMNS.filter((c) => visibleColumns.has(c.key)),
     [visibleColumns]
   )
+
+  const hasBulkSelection = onSelectionChange != null
+  const selected = selectedIds ?? new Set<string>()
+  const visibleIds = useMemo(() => new Set(sorted.map((i) => i.id)), [sorted])
+  const allVisibleSelected = sorted.length > 0 && sorted.every((i) => selected.has(i.id))
+  const someVisibleSelected = sorted.some((i) => selected.has(i.id))
+
+  const toggleSelection = useCallback(
+    (id: string) => {
+      if (!onSelectionChange) return
+      const next = new Set(selected)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      onSelectionChange(next)
+    },
+    [onSelectionChange, selected]
+  )
+
+  const toggleSelectAll = useCallback(() => {
+    if (!onSelectionChange) return
+    if (allVisibleSelected) {
+      const next = new Set(selected)
+      visibleIds.forEach((id) => next.delete(id))
+      onSelectionChange(next)
+    } else {
+      const next = new Set(selected)
+      sorted.forEach((i) => next.add(i.id))
+      onSelectionChange(next)
+    }
+  }, [onSelectionChange, selected, allVisibleSelected, visibleIds, sorted])
+
+  const clearSelection = useCallback(() => {
+    onSelectionChange?.(new Set())
+  }, [onSelectionChange])
 
   // CSV export
   const exportCSV = useCallback(() => {
@@ -612,12 +659,67 @@ export function StockTable({
           </span>
         </div>
 
+        {/* Bulk action bar */}
+        {hasBulkSelection && selected.size > 0 && (
+          <div className="flex items-center justify-between gap-2 border-b bg-muted/30 px-4 py-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">
+                {selected.size} selected
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1 text-xs"
+                onClick={onBulkChangeLocation}
+              >
+                <MapPin className="h-3.5 w-3.5" />
+                Change location
+              </Button>
+              {onBulkVerify && hideStatusFilter && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1 text-xs"
+                  onClick={onBulkVerify}
+                >
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Verify
+                </Button>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={clearSelection}
+              aria-label="Clear selection"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
+
         {/* Desktop table */}
         <TooltipProvider delayDuration={200}>
         <div className="hidden overflow-x-auto lg:block">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
+                {hasBulkSelection && (
+                  <TableHead className="w-10 pl-4 pr-0">
+                    <Checkbox
+                      checked={
+                        allVisibleSelected
+                          ? true
+                          : someVisibleSelected
+                            ? ("indeterminate" as const)
+                            : false
+                      }
+                      onCheckedChange={toggleSelectAll}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
+                )}
                 {visibleColumnDefs.map((col) => (
                   <TableHead
                     key={col.key}
@@ -643,7 +745,10 @@ export function StockTable({
             <TableBody>
               {sorted.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={visibleColumnDefs.length} className="h-32 text-center text-sm text-muted-foreground">
+                  <TableCell
+                    colSpan={visibleColumnDefs.length + (hasBulkSelection ? 1 : 0)}
+                    className="h-32 text-center text-sm text-muted-foreground"
+                  >
                     No items found
                   </TableCell>
                 </TableRow>
@@ -651,9 +756,22 @@ export function StockTable({
                 sorted.map((item) => (
                   <TableRow
                     key={item.id}
-                    className="cursor-pointer transition-colors hover:bg-secondary/50"
+                    className={`cursor-pointer transition-colors hover:bg-secondary/50 ${selected.has(item.id) ? "bg-muted/50" : ""}`}
                     onClick={() => onSelectItem(item)}
                   >
+                    {hasBulkSelection && (
+                      <TableCell
+                        className="w-10 pl-4 pr-0"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Checkbox
+                          checked={selected.has(item.id)}
+                          onCheckedChange={() => toggleSelection(item.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={`Select ${item.name}`}
+                        />
+                      </TableCell>
+                    )}
                     {visibleColumnDefs.map((col) => (
                       <TableCell
                         key={col.key}
@@ -689,10 +807,23 @@ export function StockTable({
                 <button
                   key={item.id}
                   type="button"
-                  className="flex flex-col gap-2 border-b px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-secondary/50"
+                  className={`flex flex-col gap-2 border-b px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-secondary/50 ${selected.has(item.id) ? "bg-muted/50" : ""}`}
                   onClick={() => onSelectItem(item)}
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-2">
+                    {hasBulkSelection && (
+                      <div
+                        className="shrink-0 pt-0.5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Checkbox
+                          checked={selected.has(item.id)}
+                          onCheckedChange={() => toggleSelection(item.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={`Select ${item.name}`}
+                        />
+                      </div>
+                    )}
                     <div className="flex flex-col gap-0.5">
                       <span className="text-sm font-medium text-foreground">{item.name}</span>
                       <span className="font-mono text-xs text-muted-foreground">{item.sku}</span>

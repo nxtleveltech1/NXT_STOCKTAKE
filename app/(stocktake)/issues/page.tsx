@@ -6,6 +6,7 @@ import Link from "next/link"
 import { StockHeader } from "@/components/stock-header"
 import { CreateIssueSheet } from "@/components/create-issue-sheet"
 import { IssueDetailSheet } from "@/components/issue-detail-sheet"
+import { BulkChangeIssueFieldsSheet } from "@/components/bulk-change-issue-fields-sheet"
 import { IssuesTable } from "@/components/issues-table"
 import {
   fetchStockSession,
@@ -15,9 +16,10 @@ import {
 } from "@/lib/stock-api"
 import type { StockIssue } from "@/lib/stock-api"
 import { ISSUE_CLASSIFICATIONS } from "@/lib/constants"
-import { AlertCircle, ArrowLeft, Download, Plus, RefreshCw, Search } from "lucide-react"
+import { AlertCircle, ArrowLeft, Download, Plus, RefreshCw, Search, Tag, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -67,6 +69,8 @@ export default function IssuesPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [detailId, setDetailId] = useState<string | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
+  const [selectedIssueIds, setSelectedIssueIds] = useState<Set<string>>(new Set())
+  const [bulkEditSheetOpen, setBulkEditSheetOpen] = useState(false)
 
   const { data: session } = useQuery({
     queryKey: ["stock", "session"],
@@ -170,6 +174,16 @@ export default function IssuesPage() {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         onSuccess={handleIssueSuccess}
+      />
+
+      <BulkChangeIssueFieldsSheet
+        open={bulkEditSheetOpen}
+        onOpenChange={setBulkEditSheetOpen}
+        ids={Array.from(selectedIssueIds)}
+        zones={zoneOptions}
+        assignees={issueFilters?.assignees ?? []}
+        onSuccess={handleIssueSuccess}
+        onClearSelection={() => setSelectedIssueIds(new Set())}
       />
 
       <main className="flex flex-1 flex-col p-4 lg:p-6">
@@ -355,10 +369,38 @@ export default function IssuesPage() {
                   onSelectIssue={handleSelectIssue}
                   onRefresh={handleRefresh}
                   isLoading={isLoading}
+                  selectedIds={selectedIssueIds}
+                  onSelectionChange={setSelectedIssueIds}
+                  onBulkEdit={() => setBulkEditSheetOpen(true)}
                 />
               </div>
 
-              <div className="flex flex-col md:hidden">
+              <div className="flex flex-col md:hidden gap-2">
+                {selectedIssueIds.size > 0 && (
+                  <div className="flex items-center justify-between gap-2 rounded-xl border bg-muted/30 px-4 py-2">
+                    <span className="text-sm font-medium">{selectedIssueIds.size} selected</span>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 text-xs"
+                        onClick={() => setBulkEditSheetOpen(true)}
+                      >
+                        <Tag className="h-3.5 w-3.5" />
+                        Bulk edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => setSelectedIssueIds(new Set())}
+                        aria-label="Clear selection"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 {isLoading ? (
                   <div className="space-y-2 rounded-xl border bg-card p-4">
                     {Array.from({ length: 5 }).map((_, i) => (
@@ -370,11 +412,29 @@ export default function IssuesPage() {
                     <button
                       key={issue.id}
                       type="button"
-                      className="flex flex-col gap-1 border-b px-4 py-3 text-left last:border-b-0 transition-colors hover:bg-secondary/30 rounded-xl border bg-card"
+                      className={`flex flex-col gap-1 border-b px-4 py-3 text-left last:border-b-0 transition-colors hover:bg-secondary/30 rounded-xl border bg-card ${selectedIssueIds.has(issue.id) ? "bg-muted/50" : ""}`}
                       onClick={() => handleSelectIssue(issue)}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <span className="text-sm font-medium line-clamp-1">{issue.title}</span>
+                        <div
+                          className="shrink-0 pt-0.5"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Checkbox
+                            checked={selectedIssueIds.has(issue.id)}
+                            onCheckedChange={() => {
+                              const next = new Set(selectedIssueIds)
+                              if (next.has(issue.id)) next.delete(issue.id)
+                              else next.add(issue.id)
+                              setSelectedIssueIds(next)
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label={`Select ${issue.title}`}
+                          />
+                        </div>
+                        <span className="min-w-0 flex-1 text-sm font-medium line-clamp-1">
+                          {issue.title}
+                        </span>
                         <Badge
                           variant="outline"
                           className={`shrink-0 text-[10px] ${priorityColors[issue.priority] ?? ""}`}
@@ -382,7 +442,7 @@ export default function IssuesPage() {
                           {issue.priority}
                         </Badge>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2 pl-6">
                         <Badge variant="secondary" className="h-4 px-1 py-0 text-[10px]">
                           {statusLabels[issue.status] ?? issue.status}
                         </Badge>
