@@ -33,7 +33,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { BarcodeScanner } from "@/components/barcode-scanner"
 import type { StockItem } from "@/lib/stock-store"
 import { getLocationDisplayName } from "@/lib/locations"
-import { updateStockItem, verifyStockItem, type UpdateStockItemInput } from "@/lib/stock-api"
+import { updateStockItem, type UpdateStockItemInput } from "@/lib/stock-api"
 import { Check, Minus, Plus, Package, ScanBarcode, ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
 
@@ -59,7 +59,6 @@ type ProductProfileSheetProps = {
   suppliers: string[]
   onSuccess: () => void
   sessionStatus?: "live" | "paused" | "completed"
-  onVerify?: (item: StockItem) => void
 }
 
 export function ProductProfileSheet({
@@ -71,7 +70,6 @@ export function ProductProfileSheet({
   suppliers,
   onSuccess,
   sessionStatus = "live",
-  onVerify,
 }: ProductProfileSheetProps) {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -113,16 +111,9 @@ export function ProductProfileSheet({
 
   const locationsForSelect = assignableLocations
 
-  const onSubmit = async (values: FormValues) => {
-    if (!item) return
+  const buildUpdatePayload = (values: FormValues): UpdateStockItemInput => {
     const countedQty =
       values.countedQty === "" ? undefined : Number(values.countedQty)
-    const isCountChanging =
-      countedQty !== undefined && countedQty !== (item.countedQty ?? null)
-    if (isCountChanging && sessionStatus !== "live") {
-      toast.error("Counting is disabled when session is paused or completed")
-      return
-    }
     const data: UpdateStockItemInput = {
       sku: values.sku,
       name: values.name,
@@ -133,10 +124,44 @@ export function ProductProfileSheet({
       supplier: values.supplier || null,
     }
     if (countedQty !== undefined) data.countedQty = countedQty
+    return data
+  }
 
+  const onSubmit = async (values: FormValues) => {
+    if (!item) return
+    const countedQty =
+      values.countedQty === "" ? undefined : Number(values.countedQty)
+    const isCountChanging =
+      countedQty !== undefined && countedQty !== (item.countedQty ?? null)
+    if (isCountChanging && sessionStatus !== "live") {
+      toast.error("Counting is disabled when session is paused or completed")
+      return
+    }
+    const data = buildUpdatePayload(values)
     await updateStockItem(item.id, data)
     onSuccess()
     onOpenChange(false)
+  }
+
+  const onVerifyAndSave = async () => {
+    if (!item) return
+    const valid = await form.trigger()
+    if (!valid) return
+    const values = form.getValues()
+    const countedQty =
+      values.countedQty === "" ? undefined : Number(values.countedQty)
+    const isCountChanging =
+      countedQty !== undefined && countedQty !== (item.countedQty ?? null)
+    if (isCountChanging && sessionStatus !== "live") {
+      toast.error("Counting is disabled when session is paused or completed")
+      return
+    }
+    const data = buildUpdatePayload(values)
+    data.verified = true
+    await updateStockItem(item.id, data)
+    onSuccess()
+    onOpenChange(false)
+    toast.success("Item verified")
   }
 
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false)
@@ -339,7 +364,7 @@ export function ProductProfileSheet({
                 )}
               />
 
-              {item.status === "variance" && onVerify && (
+              {item.status === "variance" && (
                 <div className="rounded-lg border bg-muted/30 p-4">
                   <Label className="text-sm font-medium">Verify Variance</Label>
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -354,7 +379,7 @@ export function ProductProfileSheet({
                         toast.error("Verifying is disabled when session is paused or completed")
                         return
                       }
-                      onVerify(item)
+                      onVerifyAndSave()
                     }}
                     disabled={sessionStatus !== "live"}
                   >

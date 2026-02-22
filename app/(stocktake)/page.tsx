@@ -384,7 +384,6 @@ export default function StockTakeDashboard() {
         suppliers={suppliers}
         onSuccess={() => queryClient.invalidateQueries({ queryKey: ["stock"] })}
         sessionStatus="live"
-        onVerify={(item) => verifyMutation.mutate(item.id)}
       />
 
       <AssignZonesSheet

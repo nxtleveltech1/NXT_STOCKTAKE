@@ -102,7 +102,7 @@ export async function PATCH(
     const status = variance === 0 ? 'counted' : 'variance'
     updateData.countedQty = countedQty
     updateData.variance = variance
-    updateData.status = status
+    if (!verified) updateData.status = status
     updateData.lastCountedBy = userName
     updateData.lastCountedAt = new Date()
 

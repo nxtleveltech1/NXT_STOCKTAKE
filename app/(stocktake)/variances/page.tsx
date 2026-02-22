@@ -211,7 +211,6 @@ export default function VariancesPage() {
         suppliers={suppliers}
         onSuccess={() => queryClient.invalidateQueries({ queryKey: ["stock"] })}
         sessionStatus="live"
-        onVerify={(item) => verifyMutation.mutate(item.id)}
       />
 
       <main className="flex flex-1 flex-col p-4 lg:p-6">
