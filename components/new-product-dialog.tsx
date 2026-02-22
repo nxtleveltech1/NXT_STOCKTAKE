@@ -130,7 +130,8 @@ export function NewProductDialog({
         supplier: "",
       })
     }
-  }, [open, defaultLocation, defaultName, form, assignableLocations])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- form ref is stable
+  }, [open, defaultLocation, defaultName, assignableLocations])
 
   const createMutation = useMutation({
     mutationFn: (values: FormValues) =>

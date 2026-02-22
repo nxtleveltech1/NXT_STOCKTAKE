@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import dynamic from "next/dynamic"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   Sheet,
@@ -28,9 +29,13 @@ import {
   type StockIssueComment,
 } from "@/lib/stock-api"
 import { ISSUE_CLASSIFICATIONS } from "@/lib/constants"
-import { NewProductDialog } from "@/components/new-product-dialog"
 import { AlertCircle, MessageSquare, PackagePlus, Send } from "lucide-react"
 import { toast } from "sonner"
+
+const NewProductDialog = dynamic(
+  () => import("@/components/new-product-dialog").then((m) => ({ default: m.NewProductDialog })),
+  { ssr: false }
+)
 
 const statusLabels: Record<string, string> = {
   open: "Open",
