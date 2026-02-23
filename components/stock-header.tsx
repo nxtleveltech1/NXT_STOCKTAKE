@@ -239,25 +239,25 @@ export function StockHeader({
         {/* Variances & Issues (desktop) */}
         <div className="hidden items-center gap-2 lg:flex">
           <Button
-            variant={isVariances ? "secondary" : "outline"}
+            variant="outline"
             size="sm"
-            className="gap-1.5 bg-transparent"
+            className={`gap-1.5 border-red-800 text-red-800 hover:border-red-900 hover:bg-red-950/10 hover:text-red-900 ${isVariances ? "bg-red-950/20" : ""}`}
             asChild
           >
             <Link href="/variances">
               <AlertTriangle className="h-3.5 w-3.5" />
               Variances
               {session.varianceItems > 0 && (
-                <Badge variant="secondary" className="ml-0.5 h-5 min-w-5 px-1.5 text-[10px]">
+                <Badge variant="secondary" className="ml-0.5 h-5 min-w-5 px-1.5 text-[10px] border-red-800/50 bg-red-950/20 text-red-800">
                   {session.varianceItems}
                 </Badge>
               )}
             </Link>
           </Button>
           <Button
-            variant={isIssues ? "secondary" : "outline"}
+            variant="outline"
             size="sm"
-            className="gap-1.5 bg-transparent"
+            className={`gap-1.5 border-red-800 text-red-800 hover:border-red-900 hover:bg-red-950/10 hover:text-red-900 ${isIssues ? "bg-red-950/20" : ""}`}
             asChild
           >
             <Link href="/issues">
@@ -265,7 +265,12 @@ export function StockHeader({
               Issues
             </Link>
           </Button>
-          <Button variant="outline" size="sm" className="gap-1.5 bg-transparent" asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 border-red-800 text-red-800 hover:border-red-900 hover:bg-red-950/10 hover:text-red-900"
+            asChild
+          >
             <Link href="/import">
               <Upload className="h-3.5 w-3.5" />
               Import
@@ -385,24 +390,24 @@ export function StockHeader({
             </div>
             <div className="flex flex-col gap-2">
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1 gap-1.5 bg-transparent" asChild>
+                <Button variant="outline" size="sm" className="flex-1 gap-1.5 border-red-800 text-red-800 hover:border-red-900 hover:bg-red-950/10 hover:text-red-900" asChild>
                   <Link href="/variances" onClick={() => setMobileMenuOpen(false)}>
                     <AlertTriangle className="h-3.5 w-3.5" />
                     Variances
                     {session.varianceItems > 0 && (
-                      <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">
+                      <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px] border-red-800/50 bg-red-950/20 text-red-800">
                         {session.varianceItems}
                       </Badge>
                     )}
                   </Link>
                 </Button>
-                <Button variant="outline" size="sm" className="flex-1 gap-1.5 bg-transparent" asChild>
+                <Button variant="outline" size="sm" className="flex-1 gap-1.5 border-red-800 text-red-800 hover:border-red-900 hover:bg-red-950/10 hover:text-red-900" asChild>
                   <Link href="/issues" onClick={() => setMobileMenuOpen(false)}>
                     <AlertCircle className="h-3.5 w-3.5" />
                     Issues
                   </Link>
                 </Button>
-                <Button variant="outline" size="sm" className="flex-1 gap-1.5 bg-transparent" asChild>
+                <Button variant="outline" size="sm" className="flex-1 gap-1.5 border-red-800 text-red-800 hover:border-red-900 hover:bg-red-950/10 hover:text-red-900" asChild>
                   <Link href="/import" onClick={() => setMobileMenuOpen(false)}>
                     <Upload className="h-3.5 w-3.5" />
                     Import
