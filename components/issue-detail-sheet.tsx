@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Select,
@@ -165,125 +166,166 @@ export function IssueDetailSheet({
           </div>
         ) : (
           <ScrollArea className="flex-1 pr-4">
-            <div className="flex flex-col gap-4 pt-4">
+            <div className="flex flex-col gap-6 pt-4">
+              {/* Issue title */}
               <div>
-                <h3 className="text-base font-semibold text-foreground">{issue.title}</h3>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <Select
-                    value={issue.status}
-                    onValueChange={handleStatusChange}
-                  >
-                    <SelectTrigger className="h-7 w-[130px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="open">Open</SelectItem>
-                      <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="resolved">Resolved</SelectItem>
-                      <SelectItem value="closed">Closed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={issue.priority}
-                    onValueChange={handlePriorityChange}
-                  >
-                    <SelectTrigger className="h-7 w-[110px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="critical">Critical</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={issue.classification || "__none__"}
-                    onValueChange={handleClassificationChange}
-                  >
-                    <SelectTrigger className="h-7 min-w-[140px]">
-                      <SelectValue placeholder="Classification" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">None</SelectItem>
-                      {ISSUE_CLASSIFICATIONS.map((c) => (
-                        <SelectItem key={c.value} value={c.value}>
-                          {c.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-3 gap-1.5"
-                  onClick={() => setNewProductOpen(true)}
-                >
-                  <PackagePlus className="h-3.5 w-3.5" />
-                  New product
-                </Button>
+                <h3 className="text-base font-semibold text-foreground leading-tight">
+                  {issue.title}
+                </h3>
               </div>
 
+              {/* Status, Priority, Classification */}
+              <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Issue details
+                </p>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="issue-status" className="text-xs text-muted-foreground">
+                      Status
+                    </Label>
+                    <Select value={issue.status} onValueChange={handleStatusChange}>
+                      <SelectTrigger id="issue-status" className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="open">Open</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="resolved">Resolved</SelectItem>
+                        <SelectItem value="closed">Closed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="issue-priority" className="text-xs text-muted-foreground">
+                      Priority
+                    </Label>
+                    <Select value={issue.priority} onValueChange={handlePriorityChange}>
+                      <SelectTrigger id="issue-priority" className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="critical">Critical</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="issue-classification" className="text-xs text-muted-foreground">
+                      Classification
+                    </Label>
+                    <Select
+                      value={issue.classification || "__none__"}
+                      onValueChange={handleClassificationChange}
+                    >
+                      <SelectTrigger id="issue-classification" className="h-9">
+                        <SelectValue placeholder="None" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">None</SelectItem>
+                        {ISSUE_CLASSIFICATIONS.map((c) => (
+                          <SelectItem key={c.value} value={c.value}>
+                            {c.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="pt-2">
+                  <Label className="text-xs text-muted-foreground">Action</Label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-1.5 gap-1.5"
+                    onClick={() => setNewProductOpen(true)}
+                  >
+                    <PackagePlus className="h-3.5 w-3.5" />
+                    Add as new product
+                  </Button>
+                </div>
+              </div>
+
+              {/* Description */}
               {issue.description && (
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">Description</p>
-                  <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">
+                <div className="rounded-lg border bg-muted/20 p-4">
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    Description
+                  </Label>
+                  <p className="mt-2 text-sm text-foreground whitespace-pre-wrap leading-relaxed">
                     {issue.description}
                   </p>
                 </div>
               )}
 
-              <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+              {/* Metadata */}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                 <span>By {issue.reporterName}</span>
-                <span>·</span>
+                <span aria-hidden>·</span>
                 <span>{formatDate(issue.createdAt)}</span>
                 {issue.zone && (
                   <>
-                    <span>·</span>
-                    <Badge variant="outline" className="h-4 px-1 py-0 text-[10px]">
+                    <span aria-hidden>·</span>
+                    <Badge variant="outline" className="h-5 px-1.5 py-0 text-[10px] font-normal">
                       {issue.zone}
                     </Badge>
                   </>
                 )}
               </div>
 
-              <div className="border-t pt-4">
-                <div className="flex items-center gap-2 mb-3">
+              {/* Comments */}
+              <div className="rounded-lg border bg-muted/20 p-4">
+                <div className="flex items-center gap-2 mb-4">
                   <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Comments ({comments.length})</span>
+                  <span className="text-sm font-medium text-foreground">
+                    Comments ({comments.length})
+                  </span>
                 </div>
 
-                <div className="flex flex-col gap-3">
-                  {comments.map((c) => (
-                    <div
-                      key={c.id}
-                      className="rounded-lg border bg-muted/30 px-3 py-2"
+                <div className="flex flex-col gap-3 mb-4">
+                  {comments.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-2">
+                      No comments yet. Add one below.
+                    </p>
+                  ) : (
+                    comments.map((c) => (
+                      <div
+                        key={c.id}
+                        className="rounded-md border bg-background px-3 py-2.5"
+                      >
+                        <p className="text-sm text-foreground leading-relaxed">{c.body}</p>
+                        <p className="mt-1.5 text-xs text-muted-foreground">
+                          {c.userName} · {formatDate(c.createdAt)}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="issue-comment" className="text-xs text-muted-foreground">
+                    Add a comment
+                  </Label>
+                  <div className="flex gap-2">
+                    <Textarea
+                      id="issue-comment"
+                      placeholder="Type your comment..."
+                      value={commentBody}
+                      onChange={(e) => setCommentBody(e.target.value)}
+                      rows={2}
+                      className="resize-none"
+                    />
+                    <Button
+                      size="icon"
+                      className="shrink-0 h-9 w-9"
+                      onClick={handleAddComment}
+                      disabled={!commentBody.trim() || commentMutation.isPending}
                     >
-                      <p className="text-sm text-foreground">{c.body}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {c.userName} · {formatDate(c.createdAt)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-4 flex gap-2">
-                  <Textarea
-                    placeholder="Add a comment..."
-                    value={commentBody}
-                    onChange={(e) => setCommentBody(e.target.value)}
-                    rows={2}
-                    className="resize-none"
-                  />
-                  <Button
-                    size="icon"
-                    className="shrink-0 h-9 w-9"
-                    onClick={handleAddComment}
-                    disabled={!commentBody.trim() || commentMutation.isPending}
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
