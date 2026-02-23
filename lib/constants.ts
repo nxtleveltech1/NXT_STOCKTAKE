@@ -1,14 +1,11 @@
 export const ISSUE_CLASSIFICATIONS = [
-  { value: "stock_damage", label: "Stock Damage" },
   { value: "missing_item", label: "Missing Item" },
+  { value: "new_product", label: "New Product" },
+  { value: "incorrect_location", label: "Incorrect Location" },
+  { value: "remove", label: "Remove" },
+  { value: "duplication", label: "Duplication" },
+  { value: "incorrect_description", label: "Incorrect Description" },
   { value: "incorrect_quantity", label: "Incorrect Quantity" },
-  { value: "incorrect_item", label: "Incorrect Item" },
-  { value: "location_discrepancy", label: "Location Discrepancy" },
-  { value: "system_error", label: "System Error" },
-  { value: "supplier_error", label: "Supplier Error" },
-  { value: "shipping_error", label: "Shipping Error" },
-  { value: "quality_control_fail", label: "Quality Control Fail" },
-  { value: "audit_flag", label: "Audit Flag" },
   { value: "other", label: "Other" },
 ] as const
 
