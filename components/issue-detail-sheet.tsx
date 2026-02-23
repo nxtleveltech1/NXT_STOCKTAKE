@@ -30,7 +30,7 @@ import {
   type StockIssueComment,
 } from "@/lib/stock-api"
 import { ISSUE_CLASSIFICATIONS } from "@/lib/constants"
-import { AlertCircle, MessageSquare, PackagePlus, Send } from "lucide-react"
+import { AlertCircle, MessageSquare, PackagePlus, Send, Save } from "lucide-react"
 import { toast } from "sonner"
 
 const NewProductDialog = dynamic(
@@ -75,6 +75,9 @@ export function IssueDetailSheet({
   const queryClient = useQueryClient()
   const [commentBody, setCommentBody] = useState("")
   const [newProductOpen, setNewProductOpen] = useState(false)
+  const [status, setStatus] = useState<string>("")
+  const [priority, setPriority] = useState<string>("")
+  const [classification, setClassification] = useState<string>("__none__")
 
   const { data: issue, isLoading: issueLoading } = useQuery({
     queryKey: ["stock", "issue", issueId],
@@ -95,6 +98,7 @@ export function IssueDetailSheet({
       queryClient.invalidateQueries({ queryKey: ["stock", "issue", issueId] })
       queryClient.invalidateQueries({ queryKey: ["stock", "issues"] })
       onSuccess()
+      toast.success("Issue updated")
     },
     onError: () => toast.error("Failed to update issue"),
   })
@@ -115,18 +119,29 @@ export function IssueDetailSheet({
     if (!open) setCommentBody("")
   }, [open])
 
+  useEffect(() => {
+    if (issue) {
+      setStatus(issue.status)
+      setPriority(issue.priority)
+      setClassification(issue.classification || "__none__")
+    }
+  }, [issue])
+
   const comments: StockIssueComment[] = commentsData?.comments ?? []
 
-  const handleStatusChange = (status: string) => {
-    if (status && issueId) updateMutation.mutate({ status })
-  }
+  const hasChanges =
+    issue &&
+    (status !== issue.status ||
+      priority !== issue.priority ||
+      classification !== (issue.classification || "__none__"))
 
-  const handlePriorityChange = (priority: string) => {
-    if (priority && issueId) updateMutation.mutate({ priority })
-  }
-
-  const handleClassificationChange = (classification: string) => {
-    if (issueId) updateMutation.mutate({ classification: classification === "__none__" ? null : classification })
+  const handleSave = () => {
+    if (!issueId || !hasChanges) return
+    updateMutation.mutate({
+      status,
+      priority,
+      classification: classification === "__none__" ? null : classification,
+    })
   }
 
   const handleAddComment = () => {
@@ -184,7 +199,7 @@ export function IssueDetailSheet({
                     <Label htmlFor="issue-status" className="text-xs text-muted-foreground">
                       Status
                     </Label>
-                    <Select value={issue.status} onValueChange={handleStatusChange}>
+                    <Select value={status} onValueChange={setStatus}>
                       <SelectTrigger id="issue-status" className="h-9">
                         <SelectValue />
                       </SelectTrigger>
@@ -200,7 +215,7 @@ export function IssueDetailSheet({
                     <Label htmlFor="issue-priority" className="text-xs text-muted-foreground">
                       Priority
                     </Label>
-                    <Select value={issue.priority} onValueChange={handlePriorityChange}>
+                    <Select value={priority} onValueChange={setPriority}>
                       <SelectTrigger id="issue-priority" className="h-9">
                         <SelectValue />
                       </SelectTrigger>
@@ -216,10 +231,7 @@ export function IssueDetailSheet({
                     <Label htmlFor="issue-classification" className="text-xs text-muted-foreground">
                       Classification
                     </Label>
-                    <Select
-                      value={issue.classification || "__none__"}
-                      onValueChange={handleClassificationChange}
-                    >
+                    <Select value={classification} onValueChange={setClassification}>
                       <SelectTrigger id="issue-classification" className="h-9">
                         <SelectValue placeholder="None" />
                       </SelectTrigger>
@@ -233,6 +245,17 @@ export function IssueDetailSheet({
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+                <div className="pt-2 border-t">
+                  <Button
+                    size="sm"
+                    className="mt-3 gap-1.5"
+                    onClick={handleSave}
+                    disabled={!hasChanges || updateMutation.isPending}
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                    {updateMutation.isPending ? "Saving…" : "Save and update"}
+                  </Button>
                 </div>
               </div>
 
