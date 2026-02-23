@@ -234,18 +234,25 @@ export function IssueDetailSheet({
                     </Select>
                   </div>
                 </div>
-                <div className="pt-2">
-                  <Label className="text-xs text-muted-foreground">Action</Label>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-1.5 gap-1.5"
-                    onClick={() => setNewProductOpen(true)}
-                  >
-                    <PackagePlus className="h-3.5 w-3.5" />
-                    Add as new product
-                  </Button>
-                </div>
+              </div>
+
+              {/* Add as new product */}
+              <div className="rounded-lg border bg-muted/20 p-4">
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">
+                  Add to catalog
+                </p>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Create this item as a new product in the stock catalog.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => setNewProductOpen(true)}
+                >
+                  <PackagePlus className="h-3.5 w-3.5" />
+                  Add as new product
+                </Button>
               </div>
 
               {/* Description */}
