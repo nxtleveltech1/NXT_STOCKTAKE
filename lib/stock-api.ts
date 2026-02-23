@@ -121,6 +121,35 @@ export async function createStockItem(data: CreateStockItemInput): Promise<Stock
   return res.json() as Promise<StockItem>
 }
 
+export type ImportStockItemsResult = {
+  created: number
+  failed: number
+  errors: { row: number; message: string }[]
+}
+
+export async function importStockItems(file: File): Promise<ImportStockItemsResult> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await fetch('/api/stock/items/import', {
+    method: 'POST',
+    body: formData,
+  })
+  const data = (await res.json().catch(() => ({}))) as
+    | ImportStockItemsResult
+    | { error?: string; created?: number; failed?: number; errors?: { row: number; message: string }[] }
+  if (!res.ok) {
+    if (res.status === 400 && data && 'errors' in data && Array.isArray(data.errors)) {
+      return {
+        created: data.created ?? 0,
+        failed: data.failed ?? data.errors.length,
+        errors: data.errors,
+      }
+    }
+    throw new Error((data as { error?: string }).error ?? 'Failed to import products')
+  }
+  return data as ImportStockItemsResult
+}
+
 export async function fetchCategories(): Promise<string[]> {
   const res = await fetch('/api/stock/categories')
   if (!res.ok) throw new Error('Failed to fetch categories')

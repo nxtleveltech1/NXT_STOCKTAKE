@@ -36,6 +36,7 @@ import {
   Download,
   FileText,
   MapPin,
+  Upload,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 
@@ -264,6 +265,12 @@ export function StockHeader({
               Issues
             </Link>
           </Button>
+          <Button variant="outline" size="sm" className="gap-1.5 bg-transparent" asChild>
+            <Link href="/import">
+              <Upload className="h-3.5 w-3.5" />
+              Import
+            </Link>
+          </Button>
         </div>
 
         {/* Mobile timer */}
@@ -393,6 +400,12 @@ export function StockHeader({
                   <Link href="/issues" onClick={() => setMobileMenuOpen(false)}>
                     <AlertCircle className="h-3.5 w-3.5" />
                     Issues
+                  </Link>
+                </Button>
+                <Button variant="outline" size="sm" className="flex-1 gap-1.5 bg-transparent" asChild>
+                  <Link href="/import" onClick={() => setMobileMenuOpen(false)}>
+                    <Upload className="h-3.5 w-3.5" />
+                    Import
                   </Link>
                 </Button>
               </div>
