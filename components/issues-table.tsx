@@ -383,7 +383,7 @@ export function IssuesTable({
               variant="ghost"
               size="sm"
               className="h-7 gap-1 text-xs"
-              onClick={onBulkEdit}
+              onClick={() => onBulkEdit?.()}
             >
               <Tag className="h-3.5 w-3.5" />
               Bulk edit

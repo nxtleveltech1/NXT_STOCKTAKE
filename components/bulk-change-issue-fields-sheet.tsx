@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select"
 import { bulkUpdateIssues } from "@/lib/stock-api"
 import { getLocationDisplayName } from "@/lib/locations"
+import { ISSUE_CLASSIFICATIONS } from "@/lib/constants"
 import { MapPin, Tag } from "lucide-react"
 import { toast } from "sonner"
 
@@ -59,6 +60,7 @@ export function BulkChangeIssueFieldsSheet({
   const [zone, setZone] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const [priority, setPriority] = useState<string | null>(null)
+  const [classification, setClassification] = useState<string | null>(null)
   const [assigneeId, setAssigneeId] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -71,6 +73,7 @@ export function BulkChangeIssueFieldsSheet({
     (zone !== null && zone !== "") ||
     status !== null ||
     priority !== null ||
+    classification !== null ||
     assigneeId !== null
 
   const handleSubmit = async () => {
@@ -84,6 +87,7 @@ export function BulkChangeIssueFieldsSheet({
       if (zone !== null) data.zone = zone || null
       if (status) data.status = status as "open" | "in_progress" | "resolved" | "closed"
       if (priority) data.priority = priority as "low" | "medium" | "high" | "critical"
+      if (classification !== null) data.classification = classification === "__none__" ? null : classification
       if (assigneeId !== null) {
         data.assigneeId = assigneeId || null
         const assignee = assignees.find((a) => a.id === assigneeId)
@@ -97,6 +101,7 @@ export function BulkChangeIssueFieldsSheet({
       setZone(null)
       setStatus(null)
       setPriority(null)
+      setClassification(null)
       setAssigneeId(null)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to update")
@@ -183,6 +188,29 @@ export function BulkChangeIssueFieldsSheet({
                 {PRIORITY_OPTIONS.map((o) => (
                   <SelectItem key={o.value} value={o.value}>
                     {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Classification</Label>
+            <Select
+              value={classification ?? "unchanged"}
+              onValueChange={(v) => setClassification(v === "unchanged" ? null : v)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="No change" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unchanged" className="text-muted-foreground">
+                  No change
+                </SelectItem>
+                <SelectItem value="__none__">Clear</SelectItem>
+                {ISSUE_CLASSIFICATIONS.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label}
                   </SelectItem>
                 ))}
               </SelectContent>

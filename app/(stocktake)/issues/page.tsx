@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useMemo } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
 import { StockHeader } from "@/components/stock-header"
@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { toast } from "sonner"
-import { getLocationDisplayName } from "@/lib/locations"
+import { getLocationDisplayName, ALLOWED_LOCATIONS } from "@/lib/locations"
 
 const statusLabels: Record<string, string> = {
   open: "Open",
@@ -147,10 +147,15 @@ export default function IssuesPage() {
     }
   }, [])
 
-  const zoneOptions = zones.map((z: { zoneCode: string; name: string }) => ({
-    zoneCode: z.zoneCode,
-    name: z.name,
-  }))
+  const zoneOptions = useMemo(() => {
+    const fromZones = Array.isArray(zones)
+      ? zones
+          .filter((z): z is { zoneCode: string; name: string } => z && typeof z === "object" && "zoneCode" in z)
+          .map((z) => ({ zoneCode: z.zoneCode, name: z.name }))
+      : []
+    if (fromZones.length > 0) return fromZones
+    return ALLOWED_LOCATIONS.map((loc) => ({ zoneCode: loc, name: getLocationDisplayName(loc) }))
+  }, [zones])
 
   return (
     <div className="flex min-h-screen flex-col bg-background">

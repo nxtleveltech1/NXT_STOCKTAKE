@@ -22,6 +22,12 @@ export async function PATCH(request: Request) {
   const priority = ["low", "medium", "high", "critical"].includes(body.priority)
     ? body.priority
     : undefined
+  const classification =
+    body.classification !== undefined
+      ? typeof body.classification === "string"
+        ? body.classification.trim() || null
+        : null
+      : undefined
   const assigneeId =
     typeof body.assigneeId === "string" ? (body.assigneeId.trim() || null) : undefined
   const assigneeName =
@@ -31,11 +37,12 @@ export async function PATCH(request: Request) {
     zone !== undefined ||
     status !== undefined ||
     priority !== undefined ||
+    classification !== undefined ||
     assigneeId !== undefined
 
   if (!hasUpdate) {
     return NextResponse.json(
-      { error: "At least one of zone, status, priority, assigneeId required" },
+      { error: "At least one of zone, status, priority, classification, assigneeId required" },
       { status: 400 }
     )
   }
@@ -56,6 +63,7 @@ export async function PATCH(request: Request) {
 
   const updateData: Parameters<typeof db.stockIssue.updateMany>[0]["data"] = {}
   if (zone !== undefined) updateData.zone = zone
+  if (classification !== undefined) updateData.classification = classification
   if (status !== undefined) {
     updateData.status = status
     if (status === "resolved" || status === "closed") {

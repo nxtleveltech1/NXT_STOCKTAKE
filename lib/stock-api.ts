@@ -515,6 +515,7 @@ export type BulkUpdateIssuesInput = {
   zone?: string | null
   status?: 'open' | 'in_progress' | 'resolved' | 'closed'
   priority?: 'low' | 'medium' | 'high' | 'critical'
+  classification?: string | null
   assigneeId?: string | null
   assigneeName?: string | null
 }
@@ -527,6 +528,7 @@ export async function bulkUpdateIssues(
   if (data.zone !== undefined) body.zone = data.zone
   if (data.status != null) body.status = data.status
   if (data.priority != null) body.priority = data.priority
+  if (data.classification !== undefined) body.classification = data.classification
   if (data.assigneeId !== undefined) body.assigneeId = data.assigneeId
   if (data.assigneeName !== undefined) body.assigneeName = data.assigneeName
   const res = await fetch('/api/stock/issues/bulk', {
