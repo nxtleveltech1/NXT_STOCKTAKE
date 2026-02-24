@@ -90,6 +90,23 @@ export default function IssuesPage() {
 
   const sessionId = session?.id && session.id !== "default" ? session.id : undefined
 
+  const validZoneValues = useMemo(
+    () => new Set(["all", ...(issueFilters?.zones ?? []).filter((z): z is string => typeof z === "string")]),
+    [issueFilters?.zones]
+  )
+  const validReporterIds = useMemo(
+    () => new Set(["all", ...(issueFilters?.reporters ?? []).map((r) => r?.id).filter(Boolean)]),
+    [issueFilters?.reporters]
+  )
+  const validAssigneeIds = useMemo(
+    () => new Set(["all", ...(issueFilters?.assignees ?? []).map((a) => a?.id).filter(Boolean)]),
+    [issueFilters?.assignees]
+  )
+
+  const safeZoneFilter = validZoneValues.has(zoneFilter) ? zoneFilter : "all"
+  const safeReporterFilter = validReporterIds.has(reporterFilter) ? reporterFilter : "all"
+  const safeAssigneeFilter = validAssigneeIds.has(assigneeFilter) ? assigneeFilter : "all"
+
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search), 300)
     return () => clearTimeout(t)
@@ -166,23 +183,6 @@ export default function IssuesPage() {
     if (fromZones.length > 0) return fromZones
     return ALLOWED_LOCATIONS.map((loc) => ({ zoneCode: loc, name: getLocationDisplayName(loc) }))
   }, [zones])
-
-  const validZoneValues = useMemo(
-    () => new Set(["all", ...(issueFilters?.zones ?? []).filter((z): z is string => typeof z === "string")]),
-    [issueFilters?.zones]
-  )
-  const validReporterIds = useMemo(
-    () => new Set(["all", ...(issueFilters?.reporters ?? []).map((r) => r?.id).filter(Boolean)]),
-    [issueFilters?.reporters]
-  )
-  const validAssigneeIds = useMemo(
-    () => new Set(["all", ...(issueFilters?.assignees ?? []).map((a) => a?.id).filter(Boolean)]),
-    [issueFilters?.assignees]
-  )
-
-  const safeZoneFilter = validZoneValues.has(zoneFilter) ? zoneFilter : "all"
-  const safeReporterFilter = validReporterIds.has(reporterFilter) ? reporterFilter : "all"
-  const safeAssigneeFilter = validAssigneeIds.has(assigneeFilter) ? assigneeFilter : "all"
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
