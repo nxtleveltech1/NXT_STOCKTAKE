@@ -26,7 +26,10 @@ function loadRows(path: string): Record<string, unknown>[] {
   const wb = XLSX.readFile(path)
   const sheetName = wb.SheetNames.find((s) => s.includes('SOH') || s.includes('Full')) ?? wb.SheetNames[0]!
   const ws = wb.Sheets[sheetName]!
-  return XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '', raw: false })
+  return XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, {
+    defval: '',
+    raw: true, // raw: false (SheetJS) drops letter "s" in formatted text - use raw values
+  })
 }
 
 async function seedDataVault() {
@@ -79,7 +82,6 @@ async function seedDataVault() {
 
       const rawSku = row['Internal Ref'] ?? row['ID'] ?? ''
       const sku = normalize(rawSku) || String(odooId)
-
       return {
         organizationId: orgId,
         odooId,

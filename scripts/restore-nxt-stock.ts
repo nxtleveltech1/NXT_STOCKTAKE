@@ -38,7 +38,10 @@ async function restore() {
   const wb = XLSX.readFile(EXCLUDE_FILE)
   const sheetName = wb.SheetNames.find((s) => s.includes('SOH') || s.includes('Full')) ?? wb.SheetNames[0]!
   const ws = wb.Sheets[sheetName]!
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '', raw: false })
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, {
+    defval: '',
+    raw: true, // raw: false (SheetJS) drops letter "s" in formatted text - use raw values
+  })
 
   const existingByOdooId = new Map(
     (await db.stockItem.findMany({ where: { organizationId: orgId } })).map((r) => [r.odooId, r])
@@ -70,7 +73,6 @@ async function restore() {
       const available = typeof row['Available'] === 'number' ? row['Available'] : parseInt(String(row['Available'] || 0), 10) ?? null
       const rawSku = row['Internal Ref'] ?? row['ID'] ?? ''
       const sku = normalize(rawSku) || String(odooId)
-
       await db.stockItem.create({
         data: {
           organizationId: orgId,

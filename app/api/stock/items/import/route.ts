@@ -132,7 +132,10 @@ function parseXlsx(buffer: ArrayBuffer): Record<string, unknown>[] {
   const wb = XLSX.read(buffer, { type: 'array' })
   const sheet = wb.Sheets[wb.SheetNames[0]!]
   if (!sheet) return []
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '', raw: false })
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+    defval: '',
+    raw: true, // raw: false (SheetJS) drops letter "s" in formatted text - use raw values
+  })
   return rows.map((r) => mapRow(r))
 }
 

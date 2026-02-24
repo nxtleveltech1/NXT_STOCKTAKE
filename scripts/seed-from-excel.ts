@@ -20,7 +20,7 @@ async function seed() {
   const ws = wb.Sheets[sheetName]!
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, {
     defval: '',
-    raw: false,
+    raw: true, // raw: false (SheetJS) drops letter "s" in formatted text - use raw values
   })
 
   // Excel columns: ID, Product, Internal Ref, UoM, Serial Number, Barcode, Location, Warehouse, Quantity, Reserved, Available, Owner

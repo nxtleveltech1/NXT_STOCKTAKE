@@ -27,7 +27,10 @@ async function main() {
   const wb = XLSX.readFile(EXCEL_PATH)
   const sheetName = wb.SheetNames.find((s) => s.includes('SOH') || s.includes('Full')) ?? wb.SheetNames[0]!
   const ws = wb.Sheets[sheetName]!
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '', raw: false })
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, {
+    defval: '',
+    raw: true, // raw: false (SheetJS) drops letter "s" in formatted text - use raw values
+  })
 
   console.log('Sheet:', sheetName)
   console.log('Rows:', rows.length)
