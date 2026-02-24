@@ -95,17 +95,27 @@ export default function IssuesPage() {
     return () => clearTimeout(t)
   }, [search])
 
+  useEffect(() => {
+    if (!validZoneValues.has(zoneFilter)) setZoneFilter("all")
+  }, [validZoneValues, zoneFilter])
+  useEffect(() => {
+    if (!validReporterIds.has(reporterFilter)) setReporterFilter("all")
+  }, [validReporterIds, reporterFilter])
+  useEffect(() => {
+    if (!validAssigneeIds.has(assigneeFilter)) setAssigneeFilter("all")
+  }, [validAssigneeIds, assigneeFilter])
+
   const { data, isLoading } = useQuery({
-    queryKey: ["stock", "issues", sessionId ?? "all", statusFilter, priorityFilter, classificationFilter, zoneFilter, reporterFilter, assigneeFilter, searchDebounced, page],
+    queryKey: ["stock", "issues", sessionId ?? "all", statusFilter, priorityFilter, classificationFilter, safeZoneFilter, safeReporterFilter, safeAssigneeFilter, searchDebounced, page],
     queryFn: () =>
       fetchIssues({
         sessionId,
         status: statusFilter !== "all" ? statusFilter : undefined,
         priority: priorityFilter !== "all" ? priorityFilter : undefined,
         classification: classificationFilter !== "all" ? classificationFilter : undefined,
-        zone: zoneFilter !== "all" ? zoneFilter : undefined,
-        reporterId: reporterFilter !== "all" ? reporterFilter : undefined,
-        assigneeId: assigneeFilter !== "all" ? assigneeFilter : undefined,
+        zone: safeZoneFilter !== "all" ? safeZoneFilter : undefined,
+        reporterId: safeReporterFilter !== "all" ? safeReporterFilter : undefined,
+        assigneeId: safeAssigneeFilter !== "all" ? safeAssigneeFilter : undefined,
         search: searchDebounced || undefined,
         limit,
         offset: page * limit,
@@ -156,6 +166,23 @@ export default function IssuesPage() {
     if (fromZones.length > 0) return fromZones
     return ALLOWED_LOCATIONS.map((loc) => ({ zoneCode: loc, name: getLocationDisplayName(loc) }))
   }, [zones])
+
+  const validZoneValues = useMemo(
+    () => new Set(["all", ...(issueFilters?.zones ?? []).filter((z): z is string => typeof z === "string")]),
+    [issueFilters?.zones]
+  )
+  const validReporterIds = useMemo(
+    () => new Set(["all", ...(issueFilters?.reporters ?? []).map((r) => r?.id).filter(Boolean)]),
+    [issueFilters?.reporters]
+  )
+  const validAssigneeIds = useMemo(
+    () => new Set(["all", ...(issueFilters?.assignees ?? []).map((a) => a?.id).filter(Boolean)]),
+    [issueFilters?.assignees]
+  )
+
+  const safeZoneFilter = validZoneValues.has(zoneFilter) ? zoneFilter : "all"
+  const safeReporterFilter = validReporterIds.has(reporterFilter) ? reporterFilter : "all"
+  const safeAssigneeFilter = validAssigneeIds.has(assigneeFilter) ? assigneeFilter : "all"
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -272,43 +299,49 @@ export default function IssuesPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={zoneFilter} onValueChange={(v) => { setZoneFilter(v); setPage(0) }}>
+              <Select value={safeZoneFilter} onValueChange={(v) => { setZoneFilter(v); setPage(0) }}>
                 <SelectTrigger className="h-8 w-[140px]">
                   <SelectValue placeholder="Zone" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All zones</SelectItem>
-                  {(issueFilters?.zones ?? []).map((z) => (
-                    <SelectItem key={z} value={z}>
-                      {getLocationDisplayName(z)}
-                    </SelectItem>
-                  ))}
+                  {(issueFilters?.zones ?? [])
+                    .filter((z): z is string => typeof z === "string" && z.length > 0)
+                    .map((z) => (
+                      <SelectItem key={z} value={z}>
+                        {getLocationDisplayName(z)}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
-              <Select value={reporterFilter} onValueChange={(v) => { setReporterFilter(v); setPage(0) }}>
+              <Select value={safeReporterFilter} onValueChange={(v) => { setReporterFilter(v); setPage(0) }}>
                 <SelectTrigger className="h-8 w-[140px]">
                   <SelectValue placeholder="Reporter" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All reporters</SelectItem>
-                  {(issueFilters?.reporters ?? []).map((r) => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {r.name}
-                    </SelectItem>
-                  ))}
+                  {(issueFilters?.reporters ?? [])
+                    .filter((r): r is { id: string; name: string } => r != null && typeof r?.id === "string")
+                    .map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.name ?? "—"}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
-              <Select value={assigneeFilter} onValueChange={(v) => { setAssigneeFilter(v); setPage(0) }}>
+              <Select value={safeAssigneeFilter} onValueChange={(v) => { setAssigneeFilter(v); setPage(0) }}>
                 <SelectTrigger className="h-8 w-[140px]">
                   <SelectValue placeholder="Assignee" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All assignees</SelectItem>
-                  {(issueFilters?.assignees ?? []).map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.name}
-                    </SelectItem>
-                  ))}
+                  {(issueFilters?.assignees ?? [])
+                    .filter((a): a is { id: string; name: string } => a != null && typeof a?.id === "string")
+                    .map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name ?? "—"}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               {[

@@ -18,7 +18,8 @@ export function isAllowedLocation(loc: string): loc is AllowedLocation {
   return (ALLOWED_LOCATIONS as readonly string[]).includes(loc)
 }
 
-export function getLocationDisplayName(loc: string): string {
+export function getLocationDisplayName(loc: string | null | undefined): string {
+  if (loc == null || typeof loc !== 'string') return '—'
   if (loc === 'All Zones') return loc
   return (loc.split('/').pop() ?? loc).toUpperCase()
 }
