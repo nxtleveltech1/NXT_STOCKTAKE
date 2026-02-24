@@ -123,6 +123,7 @@ export async function createStockItem(data: CreateStockItemInput): Promise<Stock
 
 export type ImportStockItemsResult = {
   created: number
+  updated: number
   failed: number
   errors: { row: number; message: string }[]
 }
@@ -136,11 +137,12 @@ export async function importStockItems(file: File): Promise<ImportStockItemsResu
   })
   const data = (await res.json().catch(() => ({}))) as
     | ImportStockItemsResult
-    | { error?: string; created?: number; failed?: number; errors?: { row: number; message: string }[] }
+    | { error?: string; created?: number; updated?: number; failed?: number; errors?: { row: number; message: string }[] }
   if (!res.ok) {
     if (res.status === 400 && data && 'errors' in data && Array.isArray(data.errors)) {
       return {
         created: data.created ?? 0,
+        updated: data.updated ?? 0,
         failed: data.failed ?? data.errors.length,
         errors: data.errors,
       }

@@ -13,6 +13,10 @@ const importRowSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   location: z.string().min(1, 'Location is required'),
   expectedQty: z.number().min(0),
+  countedQty: z.number().min(0).optional(),
+  countedBy: z.string().optional(),
+  countedAt: z.string().optional(),
+  verified: z.boolean().optional(),
   barcode: z.string().optional(),
   uom: z.string().optional(),
   category: z.string().optional(),
@@ -31,6 +35,12 @@ const COLUMN_MAP: Record<string, keyof ImportRow> = {
   location: 'location',
   expected: 'expectedQty',
   'expected qty': 'expectedQty',
+  counted: 'countedQty',
+  'counted qty': 'countedQty',
+  'counted by': 'countedBy',
+  'counted at': 'countedAt',
+  'last counted': 'countedAt',
+  verified: 'verified',
   barcode: 'barcode',
   uom: 'uom',
   category: 'category',
@@ -76,14 +86,33 @@ function parseCsvLine(line: string): string[] {
   return result
 }
 
+function parseBoolean(val: unknown): boolean {
+  if (typeof val === 'boolean') return val
+  const s = String(val ?? '').toLowerCase().trim()
+  return s === '1' || s === 'true' || s === 'yes' || s === 'y'
+}
+
+function parseDate(val: unknown): string | undefined {
+  if (!val) return undefined
+  const s = trim(val)
+  if (!s) return undefined
+  const d = new Date(s)
+  return Number.isNaN(d.getTime()) ? undefined : d.toISOString()
+}
+
 function mapRow(raw: Record<string, unknown>): Record<string, unknown> {
   const row: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(raw)) {
     const key = k.toLowerCase().trim()
     const field = COLUMN_MAP[key]
     if (field && v !== undefined && v !== null && String(v).trim() !== '') {
-      if (field === 'expectedQty') {
+      if (field === 'expectedQty' || field === 'countedQty') {
         row[field] = parseNumber(v)
+      } else if (field === 'verified') {
+        row[field] = parseBoolean(v)
+      } else if (field === 'countedAt') {
+        const parsed = parseDate(v)
+        if (parsed) row[field] = parsed
       } else {
         row[field] = trim(v)
       }
@@ -129,11 +158,20 @@ function toImportRow(raw: Record<string, unknown>): ImportRow | null {
   const location = trim(raw.location)
   const expectedQty = parseNumber(raw.expectedQty ?? raw.expected ?? 0)
   if (!sku || !name || !location) return null
+  const countedQtyRaw = raw.countedQty
+  const countedQty =
+    countedQtyRaw !== undefined && countedQtyRaw !== null && String(countedQtyRaw).trim() !== ''
+      ? parseNumber(countedQtyRaw)
+      : undefined
   return {
     sku,
     name,
     location,
     expectedQty,
+    countedQty: countedQty !== undefined ? countedQty : undefined,
+    countedBy: trim(raw.countedBy) || undefined,
+    countedAt: raw.countedAt ? String(raw.countedAt).trim() || undefined : undefined,
+    verified: raw.verified !== undefined ? parseBoolean(raw.verified) : undefined,
     barcode: trim(raw.barcode) || undefined,
     uom: trim(raw.uom) || undefined,
     category: trim(raw.category) || undefined,
@@ -233,7 +271,7 @@ export async function POST(request: Request) {
 
   if (errors.length > 0) {
     return NextResponse.json(
-      { error: 'Validation failed', created: 0, failed: errors.length, errors },
+      { error: 'Validation failed', created: 0, updated: 0, failed: errors.length, errors },
       { status: 400 }
     )
   }
@@ -244,41 +282,119 @@ export async function POST(request: Request) {
   })
   let nextOdooId = (maxOdoo?.odooId ?? 0) + 1
 
+  let created = 0
+  let updated = 0
+
   try {
+    const activitySession = await db.stockSession.findFirst({
+      orderBy: { startedAt: 'desc' },
+      where: { organizationId: orgId },
+      select: { id: true },
+    })
+
     for (const data of validRows) {
-      await db.stockItem.create({
+      const hasCounted = typeof data.countedQty === 'number'
+      const countedBy = data.countedBy?.trim() || 'Import'
+      const countedAt = data.countedAt
+        ? (() => {
+            const d = new Date(data.countedAt)
+            return Number.isNaN(d.getTime()) ? new Date() : d
+          })()
+        : new Date()
+
+      const existing = hasCounted
+        ? await db.stockItem.findFirst({
+            where: {
+              organizationId: orgId,
+              sku: data.sku,
+              location: data.location,
+            },
+            select: { id: true, expectedQty: true, status: true },
+          })
+        : null
+
+      if (existing) {
+        const variance = data.countedQty! - existing.expectedQty
+        const status =
+          variance === 0 ? 'counted' : data.verified ? 'verified' : 'variance'
+
+        await db.stockItem.update({
+          where: { id: existing.id },
+          data: {
+            countedQty: data.countedQty!,
+            variance,
+            status,
+            lastCountedBy: countedBy,
+            lastCountedAt: countedAt,
+          },
+        })
+        updated++
+      } else {
+        const variance = hasCounted ? data.countedQty! - data.expectedQty : null
+        const status = hasCounted
+          ? data.verified && variance !== 0
+            ? 'verified'
+            : variance === 0
+              ? 'counted'
+              : 'variance'
+          : 'pending'
+
+        await db.stockItem.create({
+          data: {
+            organizationId: orgId,
+            odooId: nextOdooId++,
+            sku: data.sku,
+            name: data.name,
+            location: data.location,
+            expectedQty: data.expectedQty,
+            reservedQty: null,
+            availableQty: null,
+            countedQty: hasCounted ? data.countedQty! : null,
+            variance: variance ?? null,
+            status,
+            lastCountedBy: hasCounted ? countedBy : null,
+            lastCountedAt: hasCounted ? countedAt : null,
+            barcode: data.barcode?.trim() || null,
+            uom: data.uom?.trim() || null,
+            category: data.category?.trim() || null,
+            supplier: data.supplier?.trim() || null,
+            warehouse: data.warehouse?.trim() || null,
+            serialNumber: data.serialNumber?.trim() || null,
+            owner: data.owner?.trim() || null,
+          },
+        })
+        created++
+      }
+    }
+
+    if (updated > 0) {
+      await db.stockActivity.create({
         data: {
           organizationId: orgId,
-          odooId: nextOdooId++,
-          sku: data.sku,
-          name: data.name,
-          location: data.location,
-          expectedQty: data.expectedQty,
-          reservedQty: null,
-          availableQty: null,
-          countedQty: null,
-          variance: null,
-          status: 'pending',
-          barcode: data.barcode?.trim() || null,
-          uom: data.uom?.trim() || null,
-          category: data.category?.trim() || null,
-          supplier: data.supplier?.trim() || null,
-          warehouse: data.warehouse?.trim() || null,
-          serialNumber: data.serialNumber?.trim() || null,
-          owner: data.owner?.trim() || null,
+          sessionId: activitySession?.id ?? undefined,
+          type: 'count',
+          message: `Bulk import: ${updated} item${updated !== 1 ? 's' : ''} updated with counts`,
+          zone: undefined,
         },
       })
     }
   } catch (e) {
-    console.error('Import create error:', e)
+    console.error('Import error:', e)
     return NextResponse.json(
-      { error: 'Failed to create products', created: 0, failed: validRows.length, errors: [] },
+      {
+        error: 'Failed to import',
+        created,
+        updated,
+        failed: validRows.length - created - updated,
+        errors: [] as { row: number; message: string }[],
+      },
       { status: 500 }
     )
   }
 
   return NextResponse.json({
-    created: validRows.length,
+    created,
+    updated,
     failed: 0,
     errors: [] as { row: number; message: string }[],
   })

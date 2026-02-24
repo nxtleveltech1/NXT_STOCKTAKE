@@ -95,8 +95,11 @@ export default function ImportPage() {
       const res = await importStockItems(file)
       setResult(res)
       queryClient.invalidateQueries({ queryKey: ["stock", "items"] })
-      if (res.created > 0) {
-        toast.success(`Imported ${res.created} product${res.created !== 1 ? "s" : ""}`)
+      if (res.created > 0 || res.updated > 0) {
+        const parts: string[] = []
+        if (res.created > 0) parts.push(`${res.created} created`)
+        if (res.updated > 0) parts.push(`${res.updated} updated`)
+        toast.success(`Import complete: ${parts.join(", ")}`)
       }
       if (res.failed > 0 && res.errors.length > 0) {
         toast.error(`${res.failed} row${res.failed !== 1 ? "s" : ""} failed validation`)
@@ -129,7 +132,7 @@ export default function ImportPage() {
             <div>
               <h1 className="text-xl font-semibold tracking-tight">Bulk Import Products</h1>
               <p className="text-sm text-muted-foreground">
-                Upload a CSV or XLSX file to add new products in bulk
+                Upload a CSV or XLSX file to add products or update post-stocktake counts in bulk
               </p>
             </div>
           </div>
@@ -141,8 +144,9 @@ export default function ImportPage() {
                 Upload file
               </CardTitle>
               <CardDescription>
-                Download the template, fill in your products, then upload. Required columns:
-                SKU, Name, Location, Expected. Max 5,000 rows, 5MB.
+                Download the template, fill in your products, then upload. Required: SKU, Name,
+                Location, Expected. For post-stocktake count updates, add Counted and optionally
+                Counted By. Max 5,000 rows, 5MB.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -201,11 +205,15 @@ export default function ImportPage() {
                 </div>
               )}
 
-              {result && result.created > 0 && (
+              {result && (result.created > 0 || result.updated > 0) && (
                 <div className="flex items-center gap-2 rounded-lg border bg-muted/50 p-4">
                   <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-500" />
                   <div>
-                    <p className="font-medium">Imported {result.created} product{result.created !== 1 ? "s" : ""}</p>
+                    <p className="font-medium">
+                      Import complete: {result.created > 0 && `${result.created} created`}
+                      {result.created > 0 && result.updated > 0 && ", "}
+                      {result.updated > 0 && `${result.updated} updated`}
+                    </p>
                     <p className="text-sm text-muted-foreground">
                       <Link href="/" className="underline hover:no-underline">
                         View in stock table

@@ -165,7 +165,7 @@ export function NewProductDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] flex flex-col sm:max-w-lg">
+      <DialogContent className="max-h-[90vh] flex flex-col sm:max-w-lg" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />

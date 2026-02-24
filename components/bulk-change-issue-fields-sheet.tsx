@@ -65,12 +65,15 @@ export function BulkChangeIssueFieldsSheet({
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const zoneOptions = useMemo(
-    () => zones.map((z) => ({ value: z.zoneCode, label: getLocationDisplayName(z.zoneCode) })),
+    () =>
+      zones
+        .filter((z) => z?.zoneCode && typeof z.zoneCode === "string" && z.zoneCode.length > 0)
+        .map((z) => ({ value: z.zoneCode, label: getLocationDisplayName(z.zoneCode) })),
     [zones]
   )
 
   const hasChange =
-    (zone !== null && zone !== "") ||
+    (zone !== null && zone !== "unchanged") ||
     status !== null ||
     priority !== null ||
     classification !== null ||
@@ -84,14 +87,14 @@ export function BulkChangeIssueFieldsSheet({
     setIsSubmitting(true)
     try {
       const data: Parameters<typeof bulkUpdateIssues>[1] = {}
-      if (zone !== null) data.zone = zone || null
+      if (zone !== null) data.zone = zone === "__clear_zone__" ? null : zone
       if (status) data.status = status as "open" | "in_progress" | "resolved" | "closed"
       if (priority) data.priority = priority as "low" | "medium" | "high" | "critical"
       if (classification !== null) data.classification = classification === "__none__" ? null : classification
       if (assigneeId !== null) {
-        data.assigneeId = assigneeId || null
+        data.assigneeId = assigneeId === "__clear_assignee__" ? null : assigneeId
         const assignee = assignees.find((a) => a.id === assigneeId)
-        data.assigneeName = assignee?.name ?? null
+        data.assigneeName = assigneeId === "__clear_assignee__" ? null : (assignee?.name ?? null)
       }
       const { updated } = await bulkUpdateIssues(ids, data)
       toast.success(`Updated ${updated} issue${updated !== 1 ? "s" : ""}`)
@@ -112,7 +115,7 @@ export function BulkChangeIssueFieldsSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-md">
+      <SheetContent side="right" className="sm:max-w-md" aria-describedby={undefined}>
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <Tag className="h-5 w-5" />
@@ -140,7 +143,7 @@ export function BulkChangeIssueFieldsSheet({
                 <SelectItem value="unchanged" className="text-muted-foreground">
                   No change
                 </SelectItem>
-                <SelectItem value="">Clear zone</SelectItem>
+                <SelectItem value="__clear_zone__">Clear zone</SelectItem>
                 {zoneOptions.map((o) => (
                   <SelectItem key={o.value} value={o.value}>
                     {o.label}
@@ -230,12 +233,14 @@ export function BulkChangeIssueFieldsSheet({
                 <SelectItem value="unchanged" className="text-muted-foreground">
                   No change
                 </SelectItem>
-                <SelectItem value="">Unassign</SelectItem>
-                {assignees.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>
-                    {a.name}
-                  </SelectItem>
-                ))}
+                <SelectItem value="__clear_assignee__">Unassign</SelectItem>
+                {assignees
+                  .filter((a) => a?.id && typeof a.id === "string" && a.id.length > 0)
+                  .map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name ?? "—"}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>

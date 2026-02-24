@@ -57,11 +57,12 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = 'right', className, children, ...props }, ref) => (
+>(({ side = 'right', className, children, 'aria-describedby': ariaDescribedBy, ...props }, ref) => (
   <SheetPortal>
     <SheetOverlay />
     <SheetPrimitive.Content
       ref={ref}
+      aria-describedby={ariaDescribedBy ?? undefined}
       className={cn(sheetVariants({ side }), className)}
       {...props}
     >
