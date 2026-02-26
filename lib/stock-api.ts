@@ -58,6 +58,17 @@ export type StockItemsResponse = {
   summary: StockSummary
 }
 
+export async function fetchStockItemsByIds(ids: string[]): Promise<{ items: StockItem[] }> {
+  if (ids.length === 0) return { items: [] }
+  const res = await fetch('/api/stock/items/by-ids', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  })
+  if (!res.ok) throw new Error('Failed to fetch items')
+  return res.json() as Promise<{ items: StockItem[] }>
+}
+
 export async function fetchStockItemIds(opts?: {
   location?: string
   status?: string

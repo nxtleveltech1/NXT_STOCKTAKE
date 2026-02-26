@@ -36,6 +36,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import type { StockItem } from "@/lib/stock-store"
 import { getLocationDisplayName } from "@/lib/locations"
+import { fetchStockItemsByIds } from "@/lib/stock-api"
 import type { StockSummary } from "@/lib/stock-api"
 import {
   Search,
@@ -257,6 +258,7 @@ export function StockTable({
   const [sortDir, setSortDir] = useState<SortDir>("asc")
   const [localSearch, setLocalSearch] = useState(search)
   const [selectAllLoading, setSelectAllLoading] = useState(false)
+  const [exportLoading, setExportLoading] = useState(false)
   const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(
     () => new Set(DEFAULT_VISIBLE)
   )
@@ -392,10 +394,14 @@ export function StockTable({
     onSelectionChange?.(new Set())
   }, [onSelectionChange])
 
-  // CSV export
-  const exportCSV = useCallback(() => {
+  // CSV export - when selection exists, export all selected; otherwise current page
+  const exportCSV = useCallback(async () => {
+    const itemsToExport: StockItem[] =
+      hasBulkSelection && selected.size > 0
+        ? (await fetchStockItemsByIds(Array.from(selected))).items
+        : sorted
     const headers = visibleColumnDefs.map((c) => c.label)
-    const rows = sorted.map((item) =>
+    const rows = itemsToExport.map((item) =>
       visibleColumnDefs.map((col) => {
         const val = getCellValue(item, col.key)
         return typeof val === "string" ? `"${val.replace(/"/g, '""')}"` : String(val ?? "")
@@ -409,7 +415,7 @@ export function StockTable({
     a.download = `stock-items-${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
     URL.revokeObjectURL(url)
-  }, [sorted, visibleColumnDefs])
+  }, [hasBulkSelection, selected, sorted, visibleColumnDefs])
 
   const activeFilterCount = [
     zone !== "All Zones" ? 1 : 0,
@@ -648,12 +654,29 @@ export function StockTable({
               {/* Export CSV */}
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-muted-foreground" onClick={exportCSV}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 gap-1.5 text-xs text-muted-foreground"
+                    disabled={exportLoading}
+                    onClick={async () => {
+                      setExportLoading(true)
+                      try {
+                        await exportCSV()
+                      } finally {
+                        setExportLoading(false)
+                      }
+                    }}
+                  >
                     <Download className="h-3.5 w-3.5" />
-                    Export CSV
+                    {exportLoading ? "Exporting…" : "Export CSV"}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom">Export visible columns as CSV</TooltipContent>
+                <TooltipContent side="bottom">
+                  {hasBulkSelection && selected.size > 0
+                    ? `Export ${selected.size.toLocaleString()} selected items as CSV`
+                    : "Export visible columns as CSV"}
+                </TooltipContent>
               </Tooltip>
 
               {hasBulkSelection && (onSelectAllFiltered ? filteredTotal > 0 : sorted.length > 0) && (
