@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
+import { escapeCsv, sanitizeForExport } from '@/lib/export-utils'
 
 const EXPORT_LIMIT = 50_000
 
@@ -19,14 +20,6 @@ const CSV_HEADERS = [
   'Counted By',
   'Last Counted',
 ]
-
-function escapeCsv(val: unknown): string {
-  if (val == null) return ''
-  const s = String(val).replace(/\r\n|\r|\n/g, ' ')
-  return s.includes(',') || s.includes('"')
-    ? `"${s.replace(/"/g, '""')}"`
-    : s
-}
 
 export async function GET(request: Request) {
   const { orgId } = await auth()
@@ -49,9 +42,9 @@ export async function GET(request: Request) {
   const rows = items.map((r) =>
     [
       r.sku,
-      r.name,
-      r.supplier ?? '',
-      r.category ?? '',
+      sanitizeForExport(r.name),
+      sanitizeForExport(r.supplier),
+      sanitizeForExport(r.category),
       r.location,
       r.warehouse ?? '',
       r.uom ?? '',

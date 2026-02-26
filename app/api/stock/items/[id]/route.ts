@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
 import { ALLOWED_LOCATIONS } from '@/lib/locations'
+import { summarizeProductName } from '@/lib/summarize-product-name'
 
 function displayName(firstName: string | null, lastName: string | null, userId: string): string {
   if (firstName && lastName) return `${firstName} ${lastName}`.trim()
@@ -39,7 +40,7 @@ export async function PATCH(
   if (typeof body.sku === 'string' && body.sku.trim())
     updateData.sku = body.sku.trim()
   if (typeof body.name === 'string' && body.name.trim())
-    updateData.name = body.name.trim()
+    updateData.name = summarizeProductName(body.name)
   if (typeof body.barcode === 'string')
     updateData.barcode = body.barcode.trim() || null
   if (typeof body.uom === 'string') updateData.uom = body.uom.trim() || null

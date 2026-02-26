@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
+import { summarizeProductName } from '@/lib/summarize-product-name'
 
 const createItemSchema = z.object({
   sku: z.string().min(1, 'SKU is required'),
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
       organizationId: orgId,
       odooId: nextOdooId,
       sku: data.sku.trim(),
-      name: data.name.trim(),
+      name: summarizeProductName(data.name),
       location: data.location,
       expectedQty: data.expectedQty,
       reservedQty: null,

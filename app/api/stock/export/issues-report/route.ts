@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import * as XLSX from 'xlsx'
 import { db } from '@/lib/db'
+import { sanitizeForExport } from '@/lib/export-utils'
 
 export async function GET() {
   const { orgId } = await auth()
@@ -57,23 +58,26 @@ export async function GET() {
 
   const issueRows = issues.map((i) => {
     const linked = i.itemId ? itemMap.get(i.itemId) : null
-    const commentsText = i.stockIssueComments
-      .map(
-        (c) =>
-          `[${c.createdAt.toISOString()}] ${c.userName}: ${c.body.replace(/\r\n|\r|\n/g, ' ')}`
-      )
-      .join('\n\n')
+    const commentsText = sanitizeForExport(
+      i.stockIssueComments
+        .map(
+          (c) =>
+            `[${c.createdAt.toISOString()}] ${c.userName}: ${c.body.replace(/\r\n|\r|\n/g, ' ')}`
+        )
+        .join('\n\n'),
+      500
+    )
     return [
       i.id,
-      i.title,
-      i.description ?? '',
+      sanitizeForExport(i.title),
+      sanitizeForExport(i.description),
       i.status,
       i.priority,
       i.classification ?? '',
       i.category ?? '',
       i.zone ?? '',
       linked?.sku ?? '',
-      linked?.name ?? '',
+      sanitizeForExport(linked?.name),
       linked?.location ?? '',
       i.reporterName,
       i.assigneeName ?? '',
@@ -112,11 +116,11 @@ export async function GET() {
   const varianceRows = varianceItems.map((r) => [
     r.id,
     r.sku,
-    r.name,
-    r.category ?? '',
+    sanitizeForExport(r.name),
+    sanitizeForExport(r.category),
     r.location,
     r.warehouse ?? '',
-    r.supplier ?? '',
+    sanitizeForExport(r.supplier),
     r.uom ?? '',
     r.barcode ?? '',
     r.serialNumber ?? '',

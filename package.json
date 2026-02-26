@@ -12,6 +12,7 @@
     "seed:data-vault": "bun run scripts/seed-data-vault.ts",
     "restore:nxt-stock": "bun run scripts/restore-nxt-stock.ts",
     "invite:team": "bun run scripts/invite-team-members.ts",
+    "summarize:names": "bun run scripts/summarize-product-names.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

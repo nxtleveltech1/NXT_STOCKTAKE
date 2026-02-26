@@ -4,6 +4,7 @@ import { z } from 'zod'
 import * as XLSX from 'xlsx'
 import { db } from '@/lib/db'
 import { isAllowedLocation } from '@/lib/locations'
+import { summarizeProductName } from '@/lib/summarize-product-name'
 
 const MAX_ROWS = 5_000
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -347,7 +348,7 @@ export async function POST(request: Request) {
             organizationId: orgId,
             odooId: nextOdooId++,
             sku: data.sku,
-            name: data.name,
+            name: summarizeProductName(data.name),
             location: data.location,
             expectedQty: data.expectedQty,
             reservedQty: null,

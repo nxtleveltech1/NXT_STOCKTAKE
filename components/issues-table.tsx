@@ -36,6 +36,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import type { StockIssue } from "@/lib/stock-api"
 import { ISSUE_CLASSIFICATIONS } from "@/lib/constants"
+import { escapeCsv, sanitizeForExport } from "@/lib/export-utils"
 
 type SortField = "title" | "status" | "priority" | "classification" | "zone" | "reporter" | "created"
 type SortDir = "asc" | "desc"
@@ -262,14 +263,8 @@ export function IssuesTable({
     onSelectionChange?.(new Set())
   }, [onSelectionChange])
 
-  const escapeCsvCell = (val: unknown): string => {
-    if (val == null) return ""
-    const s = String(val)
-    const noNewlines = s.replace(/\r\n|\r|\n/g, " ")
-    return noNewlines.includes(",") || noNewlines.includes('"')
-      ? `"${noNewlines.replace(/"/g, '""')}"`
-      : noNewlines
-  }
+  const escapeCsvCell = (val: unknown, maxLen = 200): string =>
+    escapeCsv(sanitizeForExport(val, maxLen))
   const exportCSV = useCallback(() => {
     const headers = visibleColumnDefs.map((c) => escapeCsvCell(c.label))
     const rows = sorted.map((issue) =>
