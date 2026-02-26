@@ -58,6 +58,30 @@ export type StockItemsResponse = {
   summary: StockSummary
 }
 
+export async function fetchStockItemIds(opts?: {
+  location?: string
+  status?: string
+  search?: string
+  category?: string
+  uom?: string
+  warehouse?: string
+  supplier?: string
+  countedBy?: string
+}): Promise<{ ids: string[] }> {
+  const params = new URLSearchParams()
+  if (opts?.location) params.set('location', opts.location)
+  if (opts?.status) params.set('status', opts.status)
+  if (opts?.search) params.set('search', opts.search)
+  if (opts?.category) params.set('category', opts.category)
+  if (opts?.uom) params.set('uom', opts.uom)
+  if (opts?.warehouse) params.set('warehouse', opts.warehouse)
+  if (opts?.supplier) params.set('supplier', opts.supplier)
+  if (opts?.countedBy) params.set('countedBy', opts.countedBy)
+  const res = await fetch(`/api/stock/items/ids?${params}`)
+  if (!res.ok) throw new Error('Failed to fetch item IDs')
+  return res.json() as Promise<{ ids: string[] }>
+}
+
 export async function fetchStockItems(opts?: {
   location?: string
   status?: string

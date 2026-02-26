@@ -201,6 +201,8 @@ export type StockTableProps = {
   onBulkChangeLocation?: () => void
   /** When provided (e.g. variances page), shows bulk verify in the bulk bar */
   onBulkVerify?: () => void
+  /** When provided, "Select all" selects all filtered products; otherwise falls back to page-level select */
+  onSelectAllFiltered?: () => Promise<void>
 }
 
 // ---------------------------------------------------------------------------
@@ -249,10 +251,12 @@ export function StockTable({
   onSelectionChange,
   onBulkChangeLocation,
   onBulkVerify,
+  onSelectAllFiltered,
 }: StockTableProps) {
   const [sortField, setSortField] = useState<SortField>("status")
   const [sortDir, setSortDir] = useState<SortDir>("asc")
   const [localSearch, setLocalSearch] = useState(search)
+  const [selectAllLoading, setSelectAllLoading] = useState(false)
   const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(
     () => new Set(DEFAULT_VISIBLE)
   )
@@ -651,6 +655,46 @@ export function StockTable({
                 </TooltipTrigger>
                 <TooltipContent side="bottom">Export visible columns as CSV</TooltipContent>
               </Tooltip>
+
+              {hasBulkSelection && (onSelectAllFiltered ? filteredTotal > 0 : sorted.length > 0) && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1.5 text-xs text-muted-foreground"
+                      disabled={selectAllLoading}
+                      onClick={
+                        onSelectAllFiltered
+                          ? async () => {
+                              setSelectAllLoading(true)
+                              try {
+                                await onSelectAllFiltered()
+                              } finally {
+                                setSelectAllLoading(false)
+                              }
+                            }
+                          : toggleSelectAll
+                      }
+                    >
+                      {onSelectAllFiltered
+                        ? selectAllLoading
+                          ? "Selecting…"
+                          : "Select all"
+                        : allVisibleSelected
+                          ? "Deselect page"
+                          : "Select all on page"}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    {onSelectAllFiltered
+                      ? "Select all products matching current filters"
+                      : allVisibleSelected
+                        ? "Deselect all items on this page"
+                        : "Select all items on this page"}
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </TooltipProvider>
           </div>
 

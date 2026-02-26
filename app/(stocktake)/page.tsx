@@ -19,6 +19,7 @@ import { BulkChangeLocationSheet } from "@/components/bulk-change-location-sheet
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   fetchStockItems,
+  fetchStockItemIds,
   fetchStockSession,
   fetchExportCsv,
   patchZoneAssignments,
@@ -253,6 +254,27 @@ export default function StockTakeDashboard() {
     queryClient.invalidateQueries({ queryKey: ["stock"] })
   }, [queryClient])
 
+  const handleSelectAllFiltered = useCallback(async () => {
+    const { ids } = await fetchStockItemIds({
+      search: itemsSearch || undefined,
+      location: itemsLocation && itemsLocation !== "All Zones" ? itemsLocation : undefined,
+      status: itemsStatus !== "all" ? itemsStatus : undefined,
+      category: itemsCategory !== "all" ? itemsCategory : undefined,
+      uom: itemsUom !== "all" ? itemsUom : undefined,
+      warehouse: itemsWarehouse !== "all" ? itemsWarehouse : undefined,
+      supplier: itemsSupplier !== "all" ? itemsSupplier : undefined,
+    })
+    setSelectedItemIds(new Set(ids))
+  }, [
+    itemsSearch,
+    itemsLocation,
+    itemsStatus,
+    itemsCategory,
+    itemsUom,
+    itemsWarehouse,
+    itemsSupplier,
+  ])
+
   const handleExportProgress = useCallback(async () => {
     try {
       const blob = await fetchExportCsv()
@@ -347,6 +369,7 @@ export default function StockTakeDashboard() {
     selectedIds: selectedItemIds,
     onSelectionChange: setSelectedItemIds,
     onBulkChangeLocation: () => setBulkLocationSheetOpen(true),
+    onSelectAllFiltered: handleSelectAllFiltered,
   }
 
   if (!mounted) {

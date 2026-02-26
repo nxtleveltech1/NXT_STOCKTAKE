@@ -9,6 +9,7 @@ import { ProductProfileSheet } from "@/components/product-profile-sheet"
 import { BulkChangeLocationSheet } from "@/components/bulk-change-location-sheet"
 import {
   fetchStockItems,
+  fetchStockItemIds,
   fetchStockSession,
   fetchExportCsv,
   fetchLocations,
@@ -144,6 +145,20 @@ export default function VariancesPage() {
     queryClient.invalidateQueries({ queryKey: ["stock"] })
   }, [queryClient])
 
+  const handleSelectAllFiltered = useCallback(async () => {
+    const { ids } = await fetchStockItemIds({
+      status: "variance",
+      search: search || undefined,
+      location: zone && zone !== "All Zones" ? zone : undefined,
+      category: category !== "all" ? category : undefined,
+      uom: uom !== "all" ? uom : undefined,
+      warehouse: warehouse !== "all" ? warehouse : undefined,
+      supplier: supplier !== "all" ? supplier : undefined,
+      countedBy: countedBy !== "all" ? countedBy : undefined,
+    })
+    setSelectedItemIds(new Set(ids))
+  }, [search, zone, category, uom, warehouse, supplier, countedBy])
+
   const handleExportCsv = useCallback(async () => {
     try {
       const blob = await fetchExportCsv({ status: "variance" })
@@ -216,6 +231,7 @@ export default function VariancesPage() {
     onSelectionChange: setSelectedItemIds,
     onBulkChangeLocation: () => setBulkLocationSheetOpen(true),
     onBulkVerify: () => bulkVerifyMutation.mutate(Array.from(selectedItemIds)),
+    onSelectAllFiltered: handleSelectAllFiltered,
     sessionStatus: "live" as const,
     onRefresh: handleRefresh,
     isLoading,
