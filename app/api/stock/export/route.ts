@@ -22,8 +22,8 @@ const CSV_HEADERS = [
 
 function escapeCsv(val: unknown): string {
   if (val == null) return ''
-  const s = String(val)
-  return s.includes(',') || s.includes('"') || s.includes('\n')
+  const s = String(val).replace(/\r\n|\r|\n/g, ' ')
+  return s.includes(',') || s.includes('"')
     ? `"${s.replace(/"/g, '""')}"`
     : s
 }

@@ -395,17 +395,22 @@ export function StockTable({
   }, [onSelectionChange])
 
   // CSV export - when selection exists, export all selected; otherwise current page
+  const escapeCsvCell = (val: unknown): string => {
+    if (val == null) return ""
+    const s = String(val)
+    const noNewlines = s.replace(/\r\n|\r|\n/g, " ")
+    return noNewlines.includes(",") || noNewlines.includes('"')
+      ? `"${noNewlines.replace(/"/g, '""')}"`
+      : noNewlines
+  }
   const exportCSV = useCallback(async () => {
     const itemsToExport: StockItem[] =
       hasBulkSelection && selected.size > 0
         ? (await fetchStockItemsByIds(Array.from(selected))).items
         : sorted
-    const headers = visibleColumnDefs.map((c) => c.label)
+    const headers = visibleColumnDefs.map((c) => escapeCsvCell(c.label))
     const rows = itemsToExport.map((item) =>
-      visibleColumnDefs.map((col) => {
-        const val = getCellValue(item, col.key)
-        return typeof val === "string" ? `"${val.replace(/"/g, '""')}"` : String(val ?? "")
-      })
+      visibleColumnDefs.map((col) => escapeCsvCell(getCellValue(item, col.key)))
     )
     const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n")
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
